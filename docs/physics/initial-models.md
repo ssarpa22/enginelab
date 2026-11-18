@@ -4,15 +4,15 @@ All calculations in the simulation core use SI units. Lengths are metres, volume
 
 ## Engine displacement
 
-For bore (B), stroke (S), and cylinder count (N):
+For bore \(B\), stroke \(S\), and cylinder count \(N\):
 
-[
-V_{d,cyl} = rac{pi}{4} B^2 S
-]
+\[
+V_{d,cyl} = \frac{\pi}{4} B^2 S
+\]
 
-[
+\[
 V_{d,total} = N V_{d,cyl}
-]
+\]
 
 The initial reference configuration is a generic 90-degree V8:
 - 8 cylinders
@@ -22,50 +22,50 @@ The initial reference configuration is a generic 90-degree V8:
 - 10.5:1 geometric compression ratio
 - naturally aspirated, four-stroke reference context
 
-Its calculated displacement is approximately 5.00075 litres. This is a geometric result, not a claim about power or torque.
+Its calculated displacement is approximately 4.999 litres. This is a geometric result, not a claim about power or torque.
 
 ## Clearance volume and compression ratio
 
-For geometric compression ratio (r_c):
+For geometric compression ratio \(r_c\):
 
-[
-r_c = rac{V_d + V_c}{V_c}
-qquad
-V_c = rac{V_d}{r_c - 1}
-]
+\[
+r_c = \frac{V_d + V_c}{V_c}
+\qquad
+V_c = \frac{V_d}{r_c - 1}
+\]
 
-Here (V_c) is the clearance volume per cylinder. This calculation does not model chamber shape, gasket volume, piston dish/dome, deck clearance, or deposits. Those details may be represented explicitly in a later geometry model.
+Here \(V_c\) is the clearance volume per cylinder. This calculation does not model chamber shape, gasket volume, piston dish/dome, deck clearance, or deposits. Those details may be represented explicitly in a later geometry model.
 
 ## Ideal slider-crank kinematics
 
 Let:
-- (r) be crank radius (half the stroke),
-- (l) be connecting-rod centre distance,
-- (	heta) be crank angle measured from top dead centre,
-- (x) be piston displacement from top dead centre, positive toward bottom dead centre.
+- \(r\) be crank radius (half the stroke),
+- \(l\) be connecting-rod centre distance,
+- \(\theta\) be crank angle measured from top dead centre,
+- \(x\) be piston displacement from top dead centre, positive toward bottom dead centre.
 
 The rigid slider-crank displacement is:
 
-[
-x(	heta)=r+l-rcos	heta-sqrt{l^2-r^2sin^2	heta}
-]
+\[
+x(\theta)=r+l-r\cos\theta-\sqrt{l^2-r^2\sin^2\theta}
+\]
 
-At constant angular velocity (omega), piston velocity is:
+At constant angular velocity \(\omega\), piston velocity is:
 
-[
-v(	heta)=rac{dx}{d	heta}omega
-]
+\[
+v(\theta)=\frac{dx}{d\theta}\omega
+\]
 
-[
-rac{dx}{d	heta} =
-rsin	heta +
-rac{r^2sin	hetacos	heta}
-{sqrt{l^2-r^2sin^2	heta}}
-]
+\[
+\frac{dx}{d\theta} =
+r\sin\theta +
+\frac{r^2\sin\theta\cos\theta}
+{\sqrt{l^2-r^2\sin^2\theta}}
+\]
 
-[
-omega = RPM rac{2pi}{60}
-]
+\[
+\omega = RPM \frac{2\pi}{60}
+\]
 
 The implementation accepts crank angle and RPM and returns displacement and velocity. The angle is not normalized; periodic trigonometric behavior applies for any finite angle.
 
