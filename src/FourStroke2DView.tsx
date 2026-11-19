@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
@@ -36,7 +36,8 @@ function springPath(x:number,startY:number,endY:number){
   points.push(`L${x} ${endY}`);
   return points.join(" ");
 }
-type Props = { geometry: EngineGeometry };
+type CylinderState={intakeMassFlowKgPerS:number;exhaustMassFlowKgPerS:number;pressurePa:number;temperatureK:number;burnedFraction:number;heatReleaseRateW:number};
+type Props = { geometry: EngineGeometry;angle:number;rpm:number;playing:boolean;visualRate:number;onTogglePlaying:()=>void;onVisualRateChange:(value:number)=>void;engineMode:"off"|"cranking"|"running";onStart:()=>void;cylinderState:CylinderState };
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 const fmt=(value:number,digits=1)=>Number.isFinite(value)?value.toFixed(digits):"—";
 const PHASE_LABEL:Record<Phase,string>={Intake:"ADMISIÓN",Compression:"COMPRESIÓN",Power:"EXPANSIÓN",Exhaust:"ESCAPE"};
@@ -47,27 +48,8 @@ const PHASE_COPY:Record<Phase,string>={
   Exhaust:"La leva de escape empuja su taqué y comprime el resorte. La válvula se separa del asiento y deja salir los gases."
 };
 
-export default function FourStroke2DView({geometry}:Props){
-  const [cycleAngle,setCycleAngle]=useState(0);
-  const [speed,setSpeed]=useState(.45);
-  const [playing,setPlaying]=useState(true);
-  useEffect(()=>{
-    if(!playing)return;
-    let frame=0,last=0;
-    const tick=(time:number)=>{
-      if(last===0)last=time;
-      const elapsed=(time-last)/1000;
-      // 30 updates/s keeps the SVG readable without rerendering the whole diagram every display frame.
-      if(elapsed>=1/30){
-        const delta=Math.min(elapsed,.1);
-        setCycleAngle(angle=>(angle+delta*90*speed)%720);
-        last=time;
-      }
-      frame=requestAnimationFrame(tick);
-    };
-    frame=requestAnimationFrame(tick);
-    return ()=>cancelAnimationFrame(frame);
-  },[playing,speed]);
+export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,onTogglePlaying,onVisualRateChange,engineMode,onStart,cylinderState}:Props){
+  const cycleAngle=angle;
   const cycle=((cycleAngle%720)+720)%720;
   const phase:Phase=cycle<180?"Intake":cycle<360?"Compression":cycle<540?"Power":"Exhaust";
   const crankAngle=(cycleAngle%360)*Math.PI/180;
@@ -88,25 +70,26 @@ export default function FourStroke2DView({geometry}:Props){
   const valveSeatY=84;
   const intakeValveY=valveSeatY+intakeLift,exhaustValveY=valveSeatY+exhaustLift;
   const chamberTop=valveSeatY,chamberHeight=Math.max(0,pistonTop-chamberTop);
-  const pressureBar=phase==="Power"?Math.max(8,18*Math.sin(Math.PI*clamp((cycle-360)/180,0,1))):phase==="Compression"?1+5*clamp((cycle-180)/180,0,1):phase==="Exhaust"?1.08:0.92;
-  const tempC=phase==="Power"?Math.round(520+780*Math.sin(Math.PI*clamp((cycle-360)/180,0,1))):phase==="Compression"?Math.round(90+230*clamp((cycle-180)/180,0,1)):phase==="Exhaust"?480:65;
-  const intakeStrength=valve.intakeOpen ? 0.8 : 0;
-  const exhaustStrength=valve.exhaustOpen ? 0.8 : 0;
-  const gasFill=phase==="Intake"?"url(#gasFresh)":phase==="Compression"?"url(#gasCompressed)":phase==="Power"?"url(#gasBurned)":"url(#gasSpent)";
-  const spark=cycle>=342&&cycle<=348;
-  const intakeFlow=valve.intakeOpen ? 0.024 : 0;
-  const exhaustFlow=valve.exhaustOpen ? 0.021 : 0;
-  const speedLabel=speed<.3?"MUY LENTA":speed<.7?"LENTA":"NORMAL";
+  const pressureBar=cylinderState.pressurePa/100000;
+  const tempC=Math.round(cylinderState.temperatureK-273.15);
+  const intakeStrength=valve.intakeOpen ? clamp(Math.abs(cylinderState.intakeMassFlowKgPerS)/.035,0,1) : 0;
+  const exhaustStrength=valve.exhaustOpen ? clamp(Math.abs(cylinderState.exhaustMassFlowKgPerS)/.035,0,1) : 0;
+  const gasFill=cylinderState.burnedFraction>.02?"url(#gasBurned)":phase==="Intake"?"url(#gasFresh)":phase==="Compression"?"url(#gasCompressed)":"url(#gasSpent)";
+  const spark=cylinderState.heatReleaseRateW>0;
+  const intakeFlow=Math.abs(cylinderState.intakeMassFlowKgPerS);
+  const exhaustFlow=Math.abs(cylinderState.exhaustMassFlowKgPerS);
+  const speedLabel=visualRate<.3?"MUY LENTA":visualRate<.7?"LENTA":"NORMAL";
   const intakeCamRotation=(cycle-INTAKE_CAM_CENTER)/2;
   const exhaustCamRotation=(cycle-EXHAUST_CAM_CENTER)/2;
   const intakeCamPath=useMemo(()=>camProfilePath(INTAKE_CAM_CENTER,"intake",scale),[scale]);
   const exhaustCamPath=useMemo(()=>camProfilePath(EXHAUST_CAM_CENTER,"exhaust",scale),[scale]);
-  return <section className="four-stroke-2d" aria-label="Corte bidimensional independiente del ciclo de cuatro tiempos">
-    <div className="four-stroke-2d-toolbar"><div><span className="view-live-dot"/><span>SECCIÓN LONGITUDINAL · CICLO DIDÁCTICO INDEPENDIENTE</span></div><span className="view-angle">{fmt(cycle,0)}° / 720°</span></div>
+  return <section className="four-stroke-2d" aria-label="Corte bidimensional sincronizado con la simulación mecánica principal">
+    <div className="four-stroke-2d-toolbar"><div><span className="view-live-dot"/><span>SECCIÓN LONGITUDINAL · CINEMÁTICA SINCRONIZADA</span></div><span className="view-angle">{fmt(cycle,0)}° / 720°</span></div>
     <div className="two-d-controls">
-      <button type="button" className="two-d-play" onClick={()=>setPlaying(value=>!value)}>{playing?"Ⅱ PAUSAR":"▶ REPRODUCIR"}</button>
-      <label htmlFor="two-d-speed">VELOCIDAD DE ANIMACIÓN <strong>{speedLabel} · {speed.toFixed(2)}×</strong></label>
-      <input id="two-d-speed" type="range" min="0.15" max="1" step="0.05" value={speed} onChange={event=>setSpeed(Number(event.target.value))}/>
+      <button type="button" className="two-d-play" onClick={onTogglePlaying}>{playing?"Ⅱ PAUSAR SIMULACIÓN":"▶ REANUDAR SIMULACIÓN"}</button>
+      <button type="button" className="two-d-play" onClick={onStart} disabled={engineMode==="cranking"}>{engineMode==="running"?"DETENER MOTOR":engineMode==="cranking"?"ACCIONANDO…":"⏻ START"}</button>
+      <label htmlFor="two-d-speed">ESCALA TEMPORAL <strong>{speedLabel} · {visualRate.toFixed(2)}×</strong></label>
+      <input id="two-d-speed" type="range" min="0.15" max="1" step="0.05" value={visualRate} onChange={event=>onVisualRateChange(Number(event.target.value))}/>
       <div className="two-d-speed-ends"><span>MUY LENTA</span><span>VELOCIDAD NORMAL</span></div>
     </div>
     <svg className="four-stroke-2d-svg" viewBox="0 0 760 500" role="img" aria-label="Corte de cilindro con conductos conectados a las válvulas, levas, resortes, pistón, biela y cigüeñal">
@@ -161,7 +144,7 @@ export default function FourStroke2DView({geometry}:Props){
       </g>
       <g clipPath="url(#cylinderChamber)">
         <rect x={left+4} y={chamberTop} width={boreWidth-8} height={chamberHeight} fill={gasFill} opacity={phase==="Power" ? 0.92 : 0.78}/>
-        {phase==="Power"&&<ellipse cx={cx} cy={chamberTop+chamberHeight*.52} rx={boreWidth*.42} ry={Math.max(8,chamberHeight*.42)} fill="#ff9b48" opacity={.35} filter="url(#combustionGlow)"/>}
+        {cylinderState.heatReleaseRateW>0&&<ellipse cx={cx} cy={chamberTop+chamberHeight*.52} rx={boreWidth*.42} ry={Math.max(8,chamberHeight*.42)} fill="#ff9b48" opacity={clamp(cylinderState.heatReleaseRateW/180000,0,.55)} filter="url(#combustionGlow)"/>}
         {phase==="Intake"&&[0,1,2,3,4].map(i=><path key={i} d={`M${left+18+i*18} ${chamberTop+18} q-10 18 0 32`} className="section-chamber-flow"/>)}
         {phase==="Exhaust"&&[0,1,2,3].map(i=><path key={i} d={`M${left+20+i*24} ${pistonTop-14} q-8 -18 0 -30`} className="section-chamber-flow exhaust"/>)}
       </g>
@@ -180,8 +163,8 @@ export default function FourStroke2DView({geometry}:Props){
         <text x={cx} y="488" textAnchor="middle" className="section-label">MECANISMO BIELA · MANIVELA</text>
       </g>
     </svg>
-    <div className="four-stroke-readouts"><div><span>FASE</span><strong>{PHASE_LABEL[phase]}</strong></div><div><span>VELOCIDAD</span><strong>{speed.toFixed(2)} <small>×</small></strong></div><div><span>PRESIÓN ILUSTRATIVA</span><strong>{fmt(pressureBar,1)} <small>bar</small></strong></div><div><span>TEMPERATURA ILUSTRATIVA</span><strong>{tempC} <small>°C</small></strong></div></div>
+    <div className="four-stroke-readouts"><div><span>FASE</span><strong>{PHASE_LABEL[phase]}</strong></div><div><span>RPM DEL CIGÜEÑAL</span><strong>{Math.round(rpm).toLocaleString("es-AR")} <small>RPM</small></strong></div><div><span>PRESIÓN DEL CILINDRO</span><strong>{fmt(pressureBar,1)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{tempC} <small>°C</small></strong></div></div>
     <div className="four-stroke-phase-note"><span className={`phase-indicator phase-${phase.toLowerCase()}`}/><div><strong>{PHASE_LABEL[phase]} · {fmt(cycle,0)}°</strong><p>{PHASE_COPY[phase]}</p></div><span className="four-stroke-status">{playing?"ANIMACIÓN ACTIVA":"EN PAUSA"}</span></div>
-    <GasFlowPanel intakeFlowKgPerS={intakeFlow} exhaustFlowKgPerS={exhaustFlow} exhaustTemperatureC={tempC} exhaustPressurePa={101325+exhaustFlow*180000} running={playing}/>
+    <GasFlowPanel intakeFlowKgPerS={intakeFlow} exhaustFlowKgPerS={exhaustFlow} exhaustTemperatureC={tempC} exhaustPressurePa={cylinderState.pressurePa} running={playing}/>
   </section>;
 }
