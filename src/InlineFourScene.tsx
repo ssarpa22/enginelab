@@ -13,7 +13,7 @@ const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
-type Part={piston:THREE.Group;rod:THREE.Mesh;throw:THREE.Group;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];inGas:THREE.Mesh[];outGas:THREE.Mesh[];coolant:THREE.Mesh[];oilJets:THREE.Mesh[];flame:THREE.Mesh;waterMaterial:THREE.MeshStandardMaterial;};
+type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;throw:THREE.Group;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];inGas:THREE.Mesh[];outGas:THREE.Mesh[];coolant:THREE.Mesh[];oilJets:THREE.Mesh[];flame:THREE.Mesh;waterMaterial:THREE.MeshStandardMaterial;};
 type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Mesh[];oilPump:THREE.Group;};
 
 export default function InlineFourScene(props:Props){
@@ -92,6 +92,8 @@ export default function InlineFourScene(props:Props){
    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.24,40,1,true),aluminium);skirt.position.y=-.17;piston.add(skirt);
    scene.add(piston);
    const rod=new THREE.Mesh(new THREE.CylinderGeometry(.095,.15,1,20),forged);rod.castShadow=true;scene.add(rod);
+   const rodBigEnd=new THREE.Mesh(new THREE.TorusGeometry(.17,.035,10,28),bronze);rodBigEnd.castShadow=true;scene.add(rodBigEnd);
+   const rodSmallEnd=new THREE.Mesh(new THREE.TorusGeometry(.105,.028,10,24),bronze);rodSmallEnd.castShadow=true;scene.add(rodSmallEnd);
    const intake:THREE.Group[]=[],exhaust:THREE.Group[]=[],intakeSprings:THREE.Mesh[]=[],exhaustSprings:THREE.Mesh[]=[],followers:THREE.Mesh[]=[];
    const makeValve=(x:number,zz:number,color:number)=>{
     const g=new THREE.Group(),stem=new THREE.Mesh(new THREE.CylinderGeometry(.027,.027,.58,14),steel);stem.position.y=-.12;g.add(stem);
@@ -109,7 +111,7 @@ export default function InlineFourScene(props:Props){
    const inGas=particles(0x69dfbd,10,.035),outGas=particles(0xffa85c,10,.04),coolant=particles(0x42c6dc,9,.045),oilJets=particles(0xe2b44d,6,.025);
    const flame=new THREE.Mesh(new THREE.SphereGeometry(1,20,16),new THREE.MeshStandardMaterial({color:0xff8b27,emissive:0xff4d0a,emissiveIntensity:2.2,transparent:true,opacity:0,depthWrite:false}));flame.position.set(0,deck-.12,z);scene.add(flame);
    const waterMaterial=new THREE.MeshStandardMaterial({color:0x2b9ca9,emissive:0x0d3d43,transparent:true,opacity:.24});
-   parts.push({piston,rod,throw:throws[i]!,intake,exhaust,intakeSprings,exhaustSprings,followers,inGas,outGas,coolant,oilJets,flame,waterMaterial});
+   parts.push({piston,rod,rodBigEnd,rodSmallEnd,throw:throws[i]!,intake,exhaust,intakeSprings,exhaustSprings,followers,inGas,outGas,coolant,oilJets,flame,waterMaterial});
   }
   // Shared manifolds, coolant transfer rail, oil galleries, pump and sump reservoir.
   const plenum=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,length*.92,32),intakeMaterial);plenum.rotation.x=Math.PI/2;plenum.position.set(-width*.73,deck-.12,0);scene.add(plenum);
@@ -145,6 +147,7 @@ export default function InlineFourScene(props:Props){
    p.piston.position.set(0,pinY-pistonTopOffset,z);
    const crankPin=vec(r*Math.sin(theta),r*Math.cos(theta),z),wristPin=vec(0,pinY,z);
    between(p.rod,wristPin,crankPin);
+   p.rodBigEnd.position.copy(crankPin);p.rodSmallEnd.position.copy(wristPin);
    p.throw.rotation.z=0;
    const liftIn=state.intakeLiftActualMm/1000*(2.2/props.geometry.strokeM),liftOut=state.exhaustLiftActualMm/1000*(2.2/props.geometry.strokeM);
    p.intake.forEach((v,j)=>{v.position.y=deck+.45-liftIn;p.intakeSprings[j]!.scale.y=Math.max(.35,1-liftIn/.42);p.intakeSprings[j]!.position.y=deck+.46-liftIn/2;});
