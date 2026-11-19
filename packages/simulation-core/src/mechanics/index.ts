@@ -12,3 +12,6 @@ export type { CoupledCylinderConfig, CoupledCylinderState } from "./coupled-cyli
 
 export { getInlineFourCylinderPhase, getInlineFourFiringEvents, INLINE_FOUR_CRANK_PHASES_DEG, INLINE_FOUR_CYCLE_OFFSETS_DEG, INLINE_FOUR_FIRING_ORDER } from "./inline-four";
 export type { InlineFourCylinderPhase } from "./inline-four";
+
+export { calculateCylinderMechanics, advanceEngineSystems, INITIAL_ENGINE_SYSTEMS } from "./engine-systems";
+export type { CylinderMechanicalState, EngineSystemsState, EngineSystemsInput } from "./engine-systems";
