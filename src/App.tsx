@@ -99,6 +99,10 @@ function App() {
   const crankAngle=(cycleAngle%360)*Math.PI/180;
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
   const phase=phaseAt(cycleAngle);
+  const valveState=calculateValveState(cycleAngle);
+  const intakeOpen=valveState.intakeOpen;
+  const exhaustOpen=valveState.exhaustOpen;
+  const spark=valveState.sparkActive;
   const displacement=metresToMillimetres(current.pistonDisplacementM);
   const litres=geometry.totalDisplacementM3*1000;
   const rodMin=Math.floor(setup.strokeMm/2)+5;
