@@ -145,7 +145,7 @@ export function stepCrankshaft(
     ? clamp((targetRpm - state.rpm) * governorGainNmPerRpm, -240, 240)
     : 0;
   const friction = state.rpm > 0 ? frictionTorqueNm : 0;
-  const netTorqueNm = gasTorque + governorTorque - loadTorqueNm - friction;
+  const netTorqueNm = gasTorque + externalTorqueNm + governorTorque - loadTorqueNm - friction;
   const oldOmega = state.rpm * Math.PI / 30;
   const nextOmega = Math.max(0, oldOmega + (netTorqueNm / inertiaKgM2) * dtSeconds);
   const nextRpm = Math.min(9_000, nextOmega * 30 / Math.PI);
