@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { calculateValveState, DEFAULT_VALVE_TIMING } from "./valve-timing";
+import { calculateCamFollowerCycleAngleDeg, calculateCamLobeProfileCycleAngleDeg, calculateValveState, DEFAULT_VALVE_TIMING } from "./valve-timing";
 
 describe("four-stroke valve timing", () => {
+  it("keeps the rotating cam lobe in phase with the valve at the bucket follower", () => {
+    const camCenter = 350;
+    const cylinderOffset = 180;
+    for (const crankCycleAngle of [0, 120, 350, 540, 719]) {
+      const camshaftAngle = crankCycleAngle / 2;
+      const followerCycle = calculateCamFollowerCycleAngleDeg(camshaftAngle, camCenter, cylinderOffset);
+      expect(followerCycle).toBeCloseTo((crankCycleAngle + cylinderOffset) % 720, 10);
+      const followerLocalAngle = 90 + camshaftAngle - camCenter / 2;
+      expect(calculateCamLobeProfileCycleAngleDeg(followerLocalAngle, camCenter, cylinderOffset))
+        .toBeCloseTo((crankCycleAngle + cylinderOffset) % 720, 10);
+    }
+  });
+
+
   it("opens the intake valve before TDC and keeps it open into compression", () => {
     expect(calculateValveState(715).intakeOpen).toBe(true);
     expect(calculateValveState(200).intakeOpen).toBe(true);
