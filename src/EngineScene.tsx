@@ -58,7 +58,14 @@ export default function EngineScene({
     scene.background = new THREE.Color(0x111719);
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
     camera.position.set(5.4, 3.5, 7.8);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    } catch {
+      host.textContent = "Este navegador no pudo iniciar WebGL para la vista 3D.";
+      host.classList.add("engine-3d-unavailable");
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
