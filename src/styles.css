@@ -177,21 +177,14 @@
 }
 
 
-/* Independent four-stroke teaching animation controls and mechanically linked valvetrain. */
-.two-d-controls{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:8px 14px;margin:0 0 10px;padding:11px 13px;border:1px solid #354446;border-radius:5px;background:#182326}
-.two-d-controls label{display:flex;justify-content:space-between;gap:12px;color:#9aaba6;font:8px var(--mono);letter-spacing:.07em}
-.two-d-controls label strong{color:#e9b36d;font:9px var(--mono);white-space:nowrap}
-.two-d-controls input[type=range]{grid-column:2;width:100%;accent-color:var(--mint)}
-.two-d-play{grid-row:1 / span 2;min-width:112px;padding:10px 12px;border:1px solid #54756b;border-radius:4px;background:#1a302a;color:#bdebd9;font:600 9px var(--mono);letter-spacing:.06em;cursor:pointer}
+/* Shared playback controls; all displayed motion follows the fixed-step simulation clock. */
+.two-d-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;padding:11px 13px;border:1px solid #354446;border-radius:5px;background:#182326}
+.two-d-speed-label{display:flex;align-items:center;gap:12px;color:#9aaba6;font:8px var(--mono);letter-spacing:.07em}
+.two-d-speed-label strong{color:#e9b36d;font:9px var(--mono);white-space:nowrap}
+.two-d-play{min-width:112px;padding:10px 12px;border:1px solid #54756b;border-radius:4px;background:#1a302a;color:#bdebd9;font:600 9px var(--mono);letter-spacing:.06em;cursor:pointer}
 .two-d-play:hover{background:#234239;border-color:#83cbb3}
-.two-d-speed-ends{grid-column:2;display:flex;justify-content:space-between;color:#778783;font:7px var(--mono);letter-spacing:.06em}
-.section-cam-base{fill:#3b484b;stroke:#a9b8b5;stroke-width:2}
-.section-cam-lobe{fill:#bd9865;stroke:#f0c98c;stroke-width:1.5}
-.section-follower{fill:#9ca9a6;stroke:#e0e8e3;stroke-width:1.5}
-.section-valve-spring{stroke:#c2cfca;stroke-width:2.8;fill:none;filter:drop-shadow(0 0 2px #b7c6c055)}
-.section-valve-stem{stroke-width:6}
-.section-valve-head{stroke-width:7}
-@media(max-width:620px){.two-d-controls{grid-template-columns:1fr;gap:8px}.two-d-play{grid-row:auto;width:100%}.two-d-controls label,.two-d-controls input[type=range],.two-d-speed-ends{grid-column:1}.two-d-controls label{font-size:7px}}
+.two-d-speed-presets{flex:1 1 100%}
+@media(max-width:620px){.two-d-controls{align-items:stretch;gap:7px}.two-d-play{flex:1 1 100%}.two-d-speed-label{justify-content:space-between;font-size:7px}.two-d-speed-presets{justify-content:space-between}.two-d-speed-presets button{flex:1 1 auto;padding:7px 5px;font-size:8px}}
 
 /* 2D valve train: visible seat contact, bucket-to-cam contact and compressed spring. */
 .section-valve-seat{fill:none;stroke:#d6e0db;stroke-width:2.5;stroke-linecap:round;opacity:.9}
@@ -206,3 +199,5 @@
 .four-stroke-2d.is-paused .section-intake-flow,.four-stroke-2d.is-paused .section-exhaust-flow,.four-stroke-2d.is-paused .section-chamber-flow,.four-stroke-2d.is-paused .section-intake-particle,.four-stroke-2d.is-paused .section-exhaust-particle{animation-play-state:paused}
 .two-d-speed-presets{grid-column:1/-1;justify-content:flex-start}
 .control-help{margin:6px 0 0;color:#91a09c;font-size:10px;line-height:1.5}
+
+.gas-flow-card.is-paused .gas-intake-stream,.gas-flow-card.is-paused .gas-exhaust-stream,.gas-flow-card.is-paused .gas-exhaust-particle,.gas-flow-card.is-paused .gas-outlet-plume{animation-play-state:paused}
