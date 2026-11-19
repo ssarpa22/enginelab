@@ -250,7 +250,7 @@ export default function EngineScene({
     const sparkGlow = new THREE.PointLight(0xffbd48, 4, 1.1);
     sparkGlow.position.set(0, -0.1, 0.04);
     spark.add(sparkGlow);
-    spark.position.set(0, topY + 0.48, 0.28);
+    spark.position.set(0, topY + 0.52, 0.28);
     spark.visible = false;
     scene.add(spark);
 
@@ -384,18 +384,17 @@ export default function EngineScene({
   </div>;
 }
 
+const INTAKE_GAS_CURVE = new THREE.CatmullRomCurve3([
+  vector(-1.8, 1.45, 0.05), vector(-1.35, 1.4, 0.05), vector(-0.95, 1.15, 0.05),
+  vector(-0.48, 0.95, 0.05), vector(-0.38, 0.78, 0.05), vector(-0.28, 0.6, 0.05)
+]);
+const EXHAUST_GAS_CURVE = new THREE.CatmullRomCurve3([
+  vector(0.28, 0.6, -0.05), vector(0.38, 0.78, -0.05), vector(0.48, 0.95, -0.05),
+  vector(0.95, 1.15, -0.05), vector(1.35, 1.4, -0.05), vector(1.8, 1.45, -0.05)
+]);
 function intakeCurvePoint(t: number): THREE.Vector3 {
-  const points = [
-    vector(-1.8, 1.6, 0.05), vector(-1.35, 1.55, 0.05), vector(-0.95, 1.3, 0.05),
-    vector(-0.48, 1.1, 0.05), vector(-0.38, 0.93, 0.05), vector(-0.28, 0.75, 0.05)
-  ];
-  return new THREE.CatmullRomCurve3(points).getPoint(clamp(t, 0, 1));
+  return INTAKE_GAS_CURVE.getPoint(clamp(t, 0, 1));
 }
-
 function exhaustCurvePoint(t: number): THREE.Vector3 {
-  const points = [
-    vector(0.28, 0.75, -0.05), vector(0.38, 0.93, -0.05), vector(0.48, 1.1, -0.05),
-    vector(0.95, 1.3, -0.05), vector(1.35, 1.55, -0.05), vector(1.8, 1.6, -0.05)
-  ];
-  return new THREE.CatmullRomCurve3(points).getPoint(clamp(t, 0, 1));
+  return EXHAUST_GAS_CURVE.getPoint(clamp(t, 0, 1));
 }
