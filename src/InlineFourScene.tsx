@@ -9,7 +9,7 @@ import { INLINE_FOUR_CRANK_PHASES_DEG, INLINE_FOUR_CYCLE_OFFSETS_DEG } from "../
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { createAdaptiveResolutionState, updateAdaptiveResolution } from "./rendering/adaptive-resolution";
 
-type CylinderTelemetry={pressurePa:number};
+type CylinderTelemetry={pressurePa:number;intakeMassFlowKgPerS:number;exhaustMassFlowKgPerS:number;burnedFraction:number;heatReleaseRateW:number;temperatureK:number};
 type Props={geometry:EngineGeometry;angle:number;rpm:number;cylinderStates:CylinderTelemetry[];mechanics:CylinderMechanicalState[];systems:EngineSystemsState;sparkFlash:boolean;starterActive:boolean};
 const vec=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 function convexHull(points:THREE.Vector2[]):THREE.Vector2[]{
@@ -53,7 +53,7 @@ const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMate
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];};
-type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Group[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;};
+type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Group[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;oilPumpGears:THREE.Group[];flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;gasParticles:THREE.Mesh[][];gasParticleMaterials:THREE.MeshStandardMaterial[];};
 
 function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
@@ -209,7 +209,7 @@ function InlineFourScene(props:Props){
   const timingBeltMaterial=new THREE.MeshStandardMaterial({color:0x343d40,map:beltTexture,roughness:.72,metalness:.08});
   const beltCurve=timingBeltPath(pulleyPositions.map(([x,y,r])=>({x,y,r:r+.045})),length/2+.28);
   const belt=new THREE.Mesh(new THREE.TubeGeometry(beltCurve,256,.045,10,true),timingBeltMaterial);belt.castShadow=true;timing.add(belt);scene.add(timing);
-  const parts:Part[]=[],intakeCurves:THREE.CatmullRomCurve3[]=[],exhaustCurves:THREE.CatmullRomCurve3[]=[];
+  const parts:Part[]=[],gasParticles:THREE.Mesh[][]=[],gasParticleMaterials=[new THREE.MeshStandardMaterial({color:0x7de4c7,emissive:0x1a7563,emissiveIntensity:.7,roughness:.3}),new THREE.MeshStandardMaterial({color:0xf2a36a,emissive:0x8a3d19,emissiveIntensity:.65,roughness:.35})];
   for(let i=0;i<4;i++){
    const z=zAt(i),piston=new THREE.Group();
    const crown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.22,64),steel);crown.position.y=.20;crown.castShadow=true;piston.add(crown);
@@ -249,6 +249,7 @@ function InlineFourScene(props:Props){
    for(const zz of [-bore*.12,bore*.12]){const x=bore*.28;exhaust.push(makeValve(x,z+zz,0xe4a05a));exhaustSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    makeTube(scene,[vec(-width*.52,deck+.04,z+.16),vec(-width*.58,deck-.08,z+.16),vec(-width*.66,deck-.25,z+.16),vec(-width*.72,deck-.35,z+.16)],.12,intakeMaterial);
    makeTube(scene,[vec(width*.72,deck-.35,z-.16),vec(width*.66,deck-.25,z-.16),vec(width*.58,deck-.08,z-.16),vec(width*.52,deck+.04,z-.16)],.12,exhaustMaterial);
+   const cylinderGasParticles:THREE.Mesh[]=[];for(let particle=0;particle<8;particle++){const material=particle%2===0?gasParticleMaterials[0]!:gasParticleMaterials[1]!;const bead=new THREE.Mesh(new THREE.SphereGeometry(.025,10,8),material);bead.visible=false;scene.add(bead);cylinderGasParticles.push(bead);}gasParticles.push(cylinderGasParticles);
    parts.push({piston,rod,rodBigEnd,rodSmallEnd,intake,exhaust,intakeSprings,exhaustSprings,followers});
   }
   // DOHC centreline ignition hardware: ceramic insulators, hex bodies and four coil packs.
@@ -302,7 +303,7 @@ function InlineFourScene(props:Props){
   }
   const coolantRail=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,length*.9,24),coolantMaterial);coolantRail.rotation.x=Math.PI/2;coolantRail.position.set(-width*.56,deck+.12,0);scene.add(coolantRail);
   const oilGallery=new THREE.Mesh(new THREE.CylinderGeometry(.085,.085,length*.92,20),bronze);oilGallery.rotation.x=Math.PI/2;oilGallery.position.set(width*.4,.25,0);scene.add(oilGallery);
-  const pump=new THREE.Group();for(const x of [-.12,.12]){const gear=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.1,20),bronze);gear.rotation.x=Math.PI/2;gear.position.x=x;pump.add(gear);}pump.position.set(width*.4,-.35,length/2);scene.add(pump);
+  const pump=new THREE.Group(),oilPumpGears:THREE.Group[]=[];for(const x of [-.12,.12]){const gearGroup=new THREE.Group();gearGroup.position.x=x;const gear=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.1,20),bronze);gear.rotation.x=Math.PI/2;gearGroup.add(gear);for(let tooth=0;tooth<12;tooth++){const a=tooth/12*Math.PI*2,tip=new THREE.Mesh(new RoundedBoxGeometry(.055,.075,.1,3,.01),steel);tip.position.set(Math.cos(a)*.16,Math.sin(a)*.16,0);tip.rotation.z=a;gearGroup.add(tip);}pump.add(gearGroup);oilPumpGears.push(gearGroup);}pump.position.set(width*.4,-.35,length/2);scene.add(pump);
   const sump=new THREE.Mesh(new RoundedBoxGeometry(width*1.05,.62,length*.92,5,.12),black);sump.position.set(0,-.67,0);sump.castShadow=true;scene.add(sump);
   const oilSurface=new THREE.Mesh(new THREE.PlaneGeometry(width*.96,length*.85),oilMaterial);oilSurface.rotation.x=-Math.PI/2;oilSurface.position.set(0,-.35,0);scene.add(oilSurface);
   // External radiator core and coolant hoses close the cooling circuit visually.
@@ -314,7 +315,7 @@ function InlineFourScene(props:Props){
   const floor=new THREE.Mesh(new THREE.CircleGeometry(Math.max(length,width)*.85,96),mat(0x182225,.9,.1));floor.rotation.x=-Math.PI/2;floor.position.y=-1.05;floor.receiveShadow=true;scene.add(floor);
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
-  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingPulleys,timingBeltMaterial,oilPump:pump,flywheel,starterMotor,starterPinion,starterShaft};live.current=state;
+  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingPulleys,timingBeltMaterial,oilPump:pump,oilPumpGears,flywheel,starterMotor,starterPinion,starterShaft,gasParticles,gasParticleMaterials};live.current=state;
   let previousFrameTime=performance.now();
   const render=()=>{const now=performance.now(),frameMs=now-previousFrameTime;previousFrameTime=now;
    const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;
@@ -340,7 +341,10 @@ function InlineFourScene(props:Props){
    p.intake.forEach((v,j)=>{v.position.y=deck+.45-liftIn;p.intakeSprings[j]!.scale.y=Math.max(.35,1-liftIn/.42);p.intakeSprings[j]!.position.y=deck+.46-liftIn/2;});
    p.exhaust.forEach((v,j)=>{v.position.y=deck+.45-liftOut;p.exhaustSprings[j]!.scale.y=Math.max(.35,1-liftOut/.42);p.exhaustSprings[j]!.position.y=deck+.46-liftOut/2;});
    p.followers.forEach((f,j)=>{const lift=j<2?liftIn:liftOut;f.position.y=deck+.76-lift;});
-   // Gas exchange and combustion are rendered in the dedicated 2D flow panel, not as 3D particles.
+   // Gas beads are driven by thermodynamic mass flow and are hidden when the valve is seated.
+   const gas=props.cylinderStates[i]!;
+   const intakeRate=clamp(Math.abs(gas.intakeMassFlowKgPerS)/.035,0,1),exhaustRate=clamp(Math.abs(gas.exhaustMassFlowKgPerS)/.035,0,1);
+   s.gasParticles[i]!.forEach((bead,index)=>{const intakePath=index<4,rate=intakePath?intakeRate:exhaustRate,open=intakePath?state.intakeLiftActualMm:state.exhaustLiftActualMm;const active=rate>.015&&open>.05;bead.visible=active;if(!active)return;const lane=index%4,progress=((props.angle*(intakePath?1:-1)/24+lane*.25)%1+1)%1;const start=intakePath?vec(-width*.50,deck-.04,z):vec(width*.50,deck-.04,z);const end=intakePath?vec(-bore*.28,deck+.02,z):vec(bore*.28,deck+.02,z);bead.position.lerpVectors(start,end,progress);bead.scale.setScalar(.55+rate*.8);});
   });
   s.crank.rotation.z=-crankAngle;s.flywheel.rotation.z=-crankAngle;
   const pinionX=props.starterActive ? .81 : .96;
@@ -348,6 +352,8 @@ function InlineFourScene(props:Props){
   s.starterPinion.rotation.z=props.starterActive?props.angle*Math.PI/180*4:0;
   between(s.starterShaft,vec(.96,-.38,-length/2-.12),vec(pinionX,0,-length/2-.12));
   s.cams.forEach((cam,index)=>{const center=index===0?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;cam.rotation.z=(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
+  // The oil pump is crank-driven; its meshing gears counter-rotate at their modeled 2:1 drive ratio.
+  s.oilPumpGears.forEach((gear,index)=>{gear.rotation.z=(index===0?1:-1)*crankAngle*2;});
   s.timingPulleys.forEach((pulley,index)=>{const center=index===1?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;pulley.rotation.z=index===0?-crankAngle:(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
   if(s.timingBeltMaterial.map)s.timingBeltMaterial.map.offset.x=-((props.angle%360)/360)*.24;
   // The oil pump remains static until its drive gear train is modelled.
