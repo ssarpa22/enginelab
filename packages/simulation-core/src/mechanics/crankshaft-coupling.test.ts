@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
-import { calculateInlineFourCrankCoupling, stepCrankshaft } from "./crankshaft-coupling";
+import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, stepCrankshaft } from "./crankshaft-coupling";
 
 const geometry = createEngineGeometry({
   cylinderCount: 4,
@@ -37,6 +37,13 @@ describe("pressure-coupled inline-four crankshaft", () => {
     const high = calculateInlineFourCrankCoupling(geometry, 90, 1_800, [2_000_000, 101_325, 101_325, 101_325]);
     expect(high.cylinders[0]!.gasForceN).toBeGreaterThan(0);
     expect(high.indicatedGasTorqueNm).toBeGreaterThan(low.indicatedGasTorqueNm);
+  });
+
+  it("subdivides high-RPM steps to keep crank-angle integration bounded", () => {
+    expect(calculateCrankshaftSubstepSeconds(1 / 240, 1_800, 1_800)).toBeCloseTo(4 / 10_800, 12);
+    expect(calculateCrankshaftSubstepSeconds(1 / 240, 8_000, 8_000)).toBeCloseTo(4 / 48_000, 12);
+    expect(calculateCrankshaftSubstepSeconds(0.001, 0, 0)).toBe(0.001);
+    expect(() => calculateCrankshaftSubstepSeconds(-0.01, 1_000, 1_000)).toThrow(RangeError);
   });
 
   it("integrates gas torque into shared crankshaft speed and angle", () => {
