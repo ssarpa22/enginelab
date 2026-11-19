@@ -60,8 +60,8 @@ export default function FourStroke2DView({geometry}:Props){
   const exhaustStrength=valve.exhaustOpen ? 0.8 : 0;
   const gasFill=phase==="Intake"?"url(#gasFresh)":phase==="Compression"?"url(#gasCompressed)":phase==="Power"?"url(#gasBurned)":"url(#gasSpent)";
   const spark=cycle>=342&&cycle<=348;
-  const intakeFlow=valve.intakeOpen?.024:0;
-  const exhaustFlow=valve.exhaustOpen?.021:0;
+  const intakeFlow=valve.intakeOpen ? 0.024 : 0;
+  const exhaustFlow=valve.exhaustOpen ? 0.021 : 0;
   const speedLabel=speed<.3?"MUY LENTA":speed<.7?"LENTA":"NORMAL";
   const camAngle=cycle*Math.PI/360;
   const intakeCamRotation=-18+valve.intakeLiftMm*2.1;
@@ -123,7 +123,7 @@ export default function FourStroke2DView({geometry}:Props){
         {spark&&<g className="section-spark"><path d={`M${cx} 69 l-9 13 8-2-4 13 14-17-9 2 5-9z`}/><circle cx={cx} cy="80" r="17"/></g>}
       </g>
       <g clipPath="url(#cylinderChamber)">
-        <rect x={left+4} y={chamberTop} width={boreWidth-8} height={chamberHeight} fill={gasFill} opacity={phase==="Power"?.92:.78}/>
+        <rect x={left+4} y={chamberTop} width={boreWidth-8} height={chamberHeight} fill={gasFill} opacity={phase==="Power" ? 0.92 : 0.78}/>
         {phase==="Power"&&<ellipse cx={cx} cy={chamberTop+chamberHeight*.52} rx={boreWidth*.42} ry={Math.max(8,chamberHeight*.42)} fill="#ff9b48" opacity={.35} filter="url(#combustionGlow)"/>}
         {phase==="Intake"&&[0,1,2,3,4].map(i=><path key={i} d={`M${left+18+i*18} ${chamberTop+18} q-10 18 0 32`} className="section-chamber-flow"/>)}
         {phase==="Exhaust"&&[0,1,2,3].map(i=><path key={i} d={`M${left+20+i*24} ${pistonTop-14} q-8 -18 0 -30`} className="section-chamber-flow exhaust"/>)}
