@@ -12,6 +12,7 @@ type Props = {
   burnedFraction: number;
   intakeFlowKgPerS: number;
   exhaustFlowKgPerS: number;
+  sparkFlash: boolean;
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -27,7 +28,7 @@ function placeBetween(mesh: THREE.Mesh, a: THREE.Vector3, b: THREE.Vector3) {
 }
 
 export default function EngineScene({
-  geometry, angle, pressurePa, burnedFraction, intakeFlowKgPerS, exhaustFlowKgPerS
+  geometry, angle, pressurePa, burnedFraction, intakeFlowKgPerS, exhaustFlowKgPerS, sparkFlash
 }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
@@ -46,8 +47,7 @@ export default function EngineScene({
     exhaustParticles: THREE.Mesh[];
     chamberParticles: THREE.Mesh[];
     flame: THREE.Mesh;
-    cylinderWall: THREE.Mesh;
-    pistonMaterial: THREE.MeshStandardMaterial;
+    spark: THREE.Group;
     animationFrame: number;
   } | null>(null);
 
@@ -243,6 +243,16 @@ export default function EngineScene({
     plug.add(electrode);
     plug.position.set(0, topY + 0.67, 0.28);
     scene.add(plug);
+    const spark = new THREE.Group();
+    const sparkMaterial = new THREE.LineBasicMaterial({ color: 0xffe38a, linewidth: 2 });
+    const boltPoints = [vector(0, 0, 0), vector(-0.07, -0.08, 0.015), vector(0.025, -0.14, 0.03), vector(-0.025, -0.22, 0.045)];
+    spark.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(boltPoints), sparkMaterial));
+    const sparkGlow = new THREE.PointLight(0xffbd48, 4, 1.1);
+    sparkGlow.position.set(0, -0.1, 0.04);
+    spark.add(sparkGlow);
+    spark.position.set(0, topY + 0.48, 0.28);
+    spark.visible = false;
+    scene.add(spark);
 
     const flameMaterial = new THREE.MeshStandardMaterial({
       color: 0xff8b2a, emissive: 0xff5b13, emissiveIntensity: 2.6,
@@ -279,8 +289,8 @@ export default function EngineScene({
 
     const state = {
       scene, camera, renderer, controls, piston, rod, crank, intakeValve, exhaustValve,
-      intakeCam, exhaustCam, intakeParticles, exhaustParticles, chamberParticles, flame,
-      cylinderWall: liner, pistonMaterial: brightSteel, animationFrame: 0
+      intakeCam, exhaustCam, intakeParticles, exhaustParticles, chamberParticles, flame, spark,
+      animationFrame: 0
     };
     sceneRef.current = state;
 
@@ -325,7 +335,7 @@ export default function EngineScene({
     const wrist = vector(0, pistonY - 0.12, 0);
     const pin = vector(crankRadius * Math.sin(crankRad), crankY + crankRadius * Math.cos(crankRad), 0);
     placeBetween(state.rod, wrist, pin);
-    state.crank.rotation.z = crankRad;
+    state.crank.rotation.z = -crankRad;
     state.intakeValve.position.y = topY + 0.63 - valve.intakeLiftMm * 0.035;
     state.exhaustValve.position.y = topY + 0.63 - valve.exhaustLiftMm * 0.035;
     state.intakeCam.rotation.z = normalized * Math.PI / 360;
@@ -359,13 +369,14 @@ export default function EngineScene({
       );
       particle.visible = normalized > 200 && normalized < 540 && burnedFraction < 0.98;
     });
+    state.spark.visible = sparkFlash || valve.sparkActive;
     const pressureBoost = clamp((pressurePa - 100000) / 8_000_000, 0, 1);
     const flameScale = 0.15 + burnedFraction * 0.5 + pressureBoost * 0.35;
     state.flame.scale.set(flameScale, flameScale * 0.8, flameScale);
     (state.flame.material as THREE.MeshStandardMaterial).opacity =
       normalized > 340 && normalized < 500 ? clamp(burnedFraction * 1.3, 0.08, 0.82) : 0;
     state.flame.visible = normalized > 340 && normalized < 500;
-  }, [geometry, angle, pressurePa, burnedFraction, intakeFlowKgPerS, exhaustFlowKgPerS]);
+  }, [geometry, angle, pressurePa, burnedFraction, intakeFlowKgPerS, exhaustFlowKgPerS, sparkFlash]);
 
   return <div className="engine-3d-host" ref={hostRef}>
     <div className="engine-3d-hint">ARRASTRÁ PARA ROTAR · SCROLL PARA ZOOM</div>
