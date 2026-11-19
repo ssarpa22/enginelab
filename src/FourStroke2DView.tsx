@@ -88,9 +88,8 @@ export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,
     <div className="two-d-controls">
       <button type="button" className="two-d-play" onClick={onTogglePlaying}>{playing?"Ⅱ PAUSAR SIMULACIÓN":"▶ REANUDAR SIMULACIÓN"}</button>
       <button type="button" className="two-d-play" onClick={onStart} disabled={engineMode==="cranking"}>{engineMode==="running"?"DETENER MOTOR":engineMode==="cranking"?"ACCIONANDO…":"⏻ START"}</button>
-      <label htmlFor="two-d-speed">ESCALA TEMPORAL <strong>{speedLabel} · {visualRate.toFixed(2)}×</strong></label>
-      <input id="two-d-speed" type="range" min="0.15" max="1" step="0.05" value={visualRate} onChange={event=>onVisualRateChange(Number(event.target.value))}/>
-      <div className="two-d-speed-ends"><span>MUY LENTA</span><span>VELOCIDAD NORMAL</span></div>
+      <span className="two-d-speed-label">ESCALA TEMPORAL <strong>{speedLabel} · {visualRate.toFixed(2)}×</strong></span>
+      <div className="speed-mode-buttons two-d-speed-presets">{[{value:1,label:"1×"},{value:.5,label:"0.5×"},{value:.25,label:"0.25×"},{value:.1,label:"0.1×"},{value:.05,label:"0.05×"},{value:.01,label:"0.01×"}].map(speed=><button key={speed.value} type="button" className={visualRate===speed.value?"is-active":""} aria-pressed={visualRate===speed.value} onClick={()=>onVisualRateChange(speed.value)}>{speed.label}</button>)}</div>
     </div>
     <svg className="four-stroke-2d-svg" viewBox="0 0 760 500" role="img" aria-label="Corte de cilindro con conductos conectados a las válvulas, levas, resortes, pistón, biela y cigüeñal">
       <defs>
@@ -119,8 +118,8 @@ export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,
         <path d={`M${cx+42} ${valveSeatY} Q${cx+52} 94 ${cx+70} 94 H740`} className="section-exhaust-port"/>
         <path d={`M20 94 H${cx-70} Q${cx-52} 94 ${cx-42} ${valveSeatY}`} className="section-port-glass"/>
         <path d={`M${cx+42} ${valveSeatY} Q${cx+52} 94 ${cx+70} 94 H740`} className="section-port-glass"/>
-        <path d={`M22 94 H${cx-70} Q${cx-52} 94 ${cx-42} ${valveSeatY}`} className="section-intake-flow" style={{opacity:intakeStrength,animationDuration:`${(1.2/Math.max(intakeStrength,.08)).toFixed(2)}s`}}/>
-        <path d={`M${cx+42} ${valveSeatY} Q${cx+52} 94 ${cx+70} 94 H738`} className="section-exhaust-flow" style={{opacity:exhaustStrength,animationDuration:`${(1.2/Math.max(exhaustStrength,.08)).toFixed(2)}s`}}/>
+        <path d={`M22 94 H${cx-70} Q${cx-52} 94 ${cx-42} ${valveSeatY}`} className="section-intake-flow" style={{opacity:intakeStrength,animationDuration:`${(1.2/Math.max(intakeStrength,.08)/visualRate).toFixed(2)}s`}}/>
+        <path d={`M${cx+42} ${valveSeatY} Q${cx+52} 94 ${cx+70} 94 H738`} className="section-exhaust-flow" style={{opacity:exhaustStrength,animationDuration:`${(1.2/Math.max(exhaustStrength,.08)/visualRate).toFixed(2)}s`}}/>
         <path d={`M${cx-58} ${valveSeatY} H${cx-26} M${cx+26} ${valveSeatY} H${cx+58}`} className="section-valve-seat"/>
         <text x="24" y="67" className="section-label intake">COLECTOR DE ADMISIÓN</text><text x="736" y="67" textAnchor="end" className="section-label exhaust">COLECTOR DE ESCAPE</text>
       </g>
@@ -145,8 +144,8 @@ export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,
       <g clipPath="url(#cylinderChamber)">
         <rect x={left+4} y={chamberTop} width={boreWidth-8} height={chamberHeight} fill={gasFill} opacity={phase==="Power" ? 0.92 : 0.78}/>
         {cylinderState.heatReleaseRateW>0&&<ellipse cx={cx} cy={chamberTop+chamberHeight*.52} rx={boreWidth*.42} ry={Math.max(8,chamberHeight*.42)} fill="#ff9b48" opacity={clamp(cylinderState.heatReleaseRateW/180000,0,.55)} filter="url(#combustionGlow)"/>}
-        {phase==="Intake"&&intakeStrength>.015&&[0,1,2,3,4].map(i=><path key={i} d={`M${left+18+i*18} ${chamberTop+18} q-10 18 0 32`} className="section-chamber-flow"/>)}
-        {phase==="Exhaust"&&exhaustStrength>.015&&[0,1,2,3].map(i=><path key={i} d={`M${left+20+i*24} ${pistonTop-14} q-8 -18 0 -30`} className="section-chamber-flow exhaust"/>)}
+        {phase==="Intake"&&intakeStrength>.015&&[0,1,2,3,4].map(i=><path key={i} d={`M${left+18+i*18} ${chamberTop+18} q-10 18 0 32`} className="section-chamber-flow" style={{animationDuration:`${.7/visualRate}s`}}/>)}
+        {phase==="Exhaust"&&exhaustStrength>.015&&[0,1,2,3].map(i=><path key={i} d={`M${left+20+i*24} ${pistonTop-14} q-8 -18 0 -30`} className="section-chamber-flow exhaust" style={{animationDuration:`${.7/visualRate}s`}}/>)}
       </g>
       <g className="section-moving-parts">
         <rect x={left+3} y={pistonTop} width={boreWidth-6} height="38" rx="5" fill="url(#sectionPiston)" stroke="#d5dfdd" strokeWidth="1.5"/>
@@ -165,6 +164,6 @@ export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,
     </svg>
     <div className="four-stroke-readouts"><div><span>FASE</span><strong>{PHASE_LABEL[phase]}</strong></div><div><span>RPM DEL CIGÜEÑAL</span><strong>{Math.round(rpm).toLocaleString("es-AR")} <small>RPM</small></strong></div><div><span>PRESIÓN DEL CILINDRO</span><strong>{fmt(pressureBar,1)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{tempC} <small>°C</small></strong></div></div>
     <div className="four-stroke-phase-note"><span className={`phase-indicator phase-${phase.toLowerCase()}`}/><div><strong>{PHASE_LABEL[phase]} · {fmt(cycle,0)}°</strong><p>{PHASE_COPY[phase]}</p></div><span className="four-stroke-status">{playing?"ANIMACIÓN ACTIVA":"EN PAUSA"}</span></div>
-    <GasFlowPanel intakeFlowKgPerS={intakeFlow} exhaustFlowKgPerS={exhaustFlow} exhaustTemperatureC={tempC} exhaustPressurePa={cylinderState.pressurePa} running={playing}/>
+    <GasFlowPanel intakeFlowKgPerS={intakeFlow} exhaustFlowKgPerS={exhaustFlow} exhaustTemperatureC={tempC} exhaustPressurePa={cylinderState.pressurePa} running={playing} visualRate={visualRate}/>
   </section>;
 }

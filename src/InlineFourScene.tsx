@@ -53,7 +53,7 @@ const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMate
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];};
-type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;oilPumpGears:THREE.Group[];flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;gasParticles:THREE.Mesh[][];gasParticleProgress:number[][];lastGasMotionTimeMs:number;gasParticleMaterials:THREE.MeshStandardMaterial[];};
+type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;oilPumpGears:THREE.Group[];flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;gasParticles:THREE.Mesh[][];gasParticleProgress:number[][];lastGasAngleDeg:number;gasParticleMaterials:THREE.MeshStandardMaterial[];};
 
 function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
@@ -316,7 +316,7 @@ function InlineFourScene(props:Props){
   const floor=new THREE.Mesh(new THREE.CircleGeometry(Math.max(length,width)*.85,96),mat(0x182225,.9,.1));floor.rotation.x=-Math.PI/2;floor.position.y=-1.05;floor.receiveShadow=true;scene.add(floor);
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
-  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingBeltMaterial,oilPump:pump,oilPumpGears,flywheel,starterMotor,starterPinion,starterShaft,gasParticles,gasParticleProgress,lastGasMotionTimeMs:0,gasParticleMaterials};live.current=state;
+  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingBeltMaterial,oilPump:pump,oilPumpGears,flywheel,starterMotor,starterPinion,starterShaft,gasParticles,gasParticleProgress,lastGasAngleDeg:0,gasParticleMaterials};live.current=state;
   let previousFrameTime=performance.now();
   const render=()=>{const now=performance.now(),frameMs=now-previousFrameTime;previousFrameTime=now;
    const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;
@@ -330,9 +330,10 @@ function InlineFourScene(props:Props){
   const rod=props.geometry.connectingRodLengthM*(2.2/props.geometry.strokeM),clearance=props.geometry.clearanceVolumePerCylinderM3/(Math.PI*props.geometry.boreM**2/4)*(2.2/props.geometry.strokeM);
   const bore=props.geometry.boreM*(2.2/props.geometry.strokeM),pistonTopOffset=.32,deck=rod+r+pistonTopOffset+clearance,spacing=Math.max(bore*1.18,bore+.18),length=spacing*3+bore*1.15,width=Math.max(bore*1.55,(2*r+bore*.2+.012*(2.2/props.geometry.strokeM))*1.1),crankAngle=((props.angle%360)+360)%360*Math.PI/180;
   const coupling=calculateInlineFourCrankCoupling(props.geometry,props.angle%360,props.rpm,props.cylinderStates.map(state=>state.pressurePa),101325,props.angle);
-  const motionNow=performance.now();
-  const motionDeltaSeconds=s.lastGasMotionTimeMs>0?clamp((motionNow-s.lastGasMotionTimeMs)/1000,0,.1):0;
-  s.lastGasMotionTimeMs=motionNow;
+  const rawAngleDelta=props.angle-s.lastGasAngleDeg;
+  const forwardAngleDelta=rawAngleDelta>=0?rawAngleDelta:rawAngleDelta < -360?rawAngleDelta+720:0;
+  s.lastGasAngleDeg=props.angle;
+  const motionDeltaSeconds=props.rpm>0?forwardAngleDelta/(props.rpm*6):0;
   s.parts.forEach((p,i)=>{
    const z=(i-1.5)*spacing,theta=crankAngle+(INLINE_FOUR_CRANK_PHASES_DEG[i]??0)*Math.PI/180;
    const state=props.mechanics[i],kinematics=coupling.cylinders[i];if(!state||!kinematics)return;

@@ -1,6 +1,8 @@
-export const FIXED_PHYSICS_STEP_SECONDS = 1 / 240;
+// A 2,400 Hz fixed clock keeps the 800 RPM crankshaft moving in 2° increments.
+// This matters at 0.01× playback, where a 240 Hz clock would visibly stutter.
+export const FIXED_PHYSICS_STEP_SECONDS = 1 / 2_400;
 export const MAX_FRAME_DELTA_SECONDS = 0.1;
-export const MAX_PHYSICS_STEPS_PER_FRAME = 24;
+export const MAX_PHYSICS_STEPS_PER_FRAME = 240;
 
 export interface FixedStepAccumulatorState {
   remainderSeconds: number;

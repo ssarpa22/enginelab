@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
-import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, MAX_CRANKSHAFT_RPM, stepCrankshaft } from "./crankshaft-coupling";
+import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, DEFAULT_ENGINE_IDLE_RPM, MAX_CRANKSHAFT_RPM, stepCrankshaft } from "./crankshaft-coupling";
 
 const geometry = createEngineGeometry({
   cylinderCount: 4,
@@ -12,6 +12,10 @@ const geometry = createEngineGeometry({
 });
 
 describe("pressure-coupled inline-four crankshaft", () => {
+  it("uses one fixed 800 RPM idle setpoint and matching hard ceiling", () => {
+    expect(DEFAULT_ENGINE_IDLE_RPM).toBe(800);
+    expect(MAX_CRANKSHAFT_RPM).toBe(DEFAULT_ENGINE_IDLE_RPM);
+  });
   it("keeps piston positions on the exact slider-crank geometry", () => {
     const state = calculateInlineFourCrankCoupling(geometry, 0, 1_800, [101_325, 101_325, 101_325, 101_325]);
     expect(state.cylinders).toHaveLength(4);
@@ -90,7 +94,7 @@ describe("pressure-coupled inline-four crankshaft", () => {
   });
 
   it("hard-limits the crankshaft even when a caller requests an unsafe target", () => {
-    const next = stepCrankshaft({ cycleAngleDeg: 0, rpm: 99 }, 220, {
+    const next = stepCrankshaft({ cycleAngleDeg: 0, rpm: MAX_CRANKSHAFT_RPM - 1 }, 220, {
       targetRpm: 8_000,
       dtSeconds: 0.01,
       loadTorqueNm: 0,
