@@ -21,3 +21,5 @@ export type { EngineDamageState, EngineDamageInput } from "./engine-damage";
 
 export { calculateInlineFourCrankCoupling, stepCrankshaft } from "./crankshaft-coupling";
 export type { InlineFourCrankCoupling, CylinderCrankCoupling, CrankshaftDynamicState, CrankshaftStepOptions } from "./crankshaft-coupling";
+
+export { calculateStarterTorque, starterCanDisengage, STARTER_CUTOUT_RPM, STARTER_STALL_TORQUE_NM, STARTER_NO_LOAD_RPM } from "./starter-system";
