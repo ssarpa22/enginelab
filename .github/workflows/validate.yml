@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   validate:
-    name: TypeScript and unit tests
+    name: TypeScript, tests and production build
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -23,10 +23,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Run typecheck and tests
+      - name: Run typecheck, tests and production build
         run: npm run validate
