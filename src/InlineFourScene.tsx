@@ -327,7 +327,7 @@ function InlineFourScene(props:Props){
   const s=live.current;if(!s)return;
   const stroke=props.geometry.strokeM*(2.2/props.geometry.strokeM),r=props.geometry.crankRadiusM*(2.2/props.geometry.strokeM);
   const rod=props.geometry.connectingRodLengthM*(2.2/props.geometry.strokeM),clearance=props.geometry.clearanceVolumePerCylinderM3/(Math.PI*props.geometry.boreM**2/4)*(2.2/props.geometry.strokeM);
-  const bore=props.geometry.boreM*(2.2/props.geometry.strokeM),pistonTopOffset=.32,deck=rod+r+pistonTopOffset+clearance,spacing=Math.max(bore*1.18,bore+.18),length=spacing*3+bore*1.15,crankAngle=((props.angle%360)+360)%360*Math.PI/180;
+  const bore=props.geometry.boreM*(2.2/props.geometry.strokeM),pistonTopOffset=.32,deck=rod+r+pistonTopOffset+clearance,spacing=Math.max(bore*1.18,bore+.18),length=spacing*3+bore*1.15,width=Math.max(bore*1.55,(2*r+bore*.2+.012*(2.2/props.geometry.strokeM))*1.1),crankAngle=((props.angle%360)+360)%360*Math.PI/180;
   const coupling=calculateInlineFourCrankCoupling(props.geometry,props.angle%360,props.rpm,props.cylinderStates.map(state=>state.pressurePa),101325,props.angle);
   s.parts.forEach((p,i)=>{
    const z=(i-1.5)*spacing,theta=crankAngle+(INLINE_FOUR_CRANK_PHASES_DEG[i]??0)*Math.PI/180;
