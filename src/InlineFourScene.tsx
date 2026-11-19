@@ -50,9 +50,10 @@ export default function InlineFourScene(props:Props) {
   const mechanical=[0,Math.PI,Math.PI,0],cycleOffsets=[0,180,540,360];
 
   // One-piece inline block, cutaway skirt and four machined cylinder liners.
-  const block=new THREE.Mesh(new THREE.BoxGeometry(2.18,2.85,4.28),dark);block.position.y=-.02;block.castShadow=true;block.receiveShadow=true;scene.add(block);
-  const openFace=new THREE.Mesh(new THREE.BoxGeometry(2.2,2.5,2.2),new THREE.MeshStandardMaterial({color:0x718186,transparent:true,opacity:.13,metalness:.5,side:THREE.DoubleSide,depthWrite:false}));
-  openFace.position.set(-.04,.03,0);scene.add(openFace);
+  const blockSide=new THREE.Mesh(new THREE.BoxGeometry(.18,2.85,4.28),dark);blockSide.position.set(-1.02,-.02,0);blockSide.castShadow=true;blockSide.receiveShadow=true;scene.add(blockSide);
+  const rearBulkhead=new THREE.Mesh(new THREE.BoxGeometry(2.12,2.85,.18),dark);rearBulkhead.position.set(0,-.02,-2.14);rearBulkhead.castShadow=true;scene.add(rearBulkhead);
+  const frontRails=[-.68,.68].map(x=>{const rail=new THREE.Mesh(new THREE.BoxGeometry(.72,2.5,.16),dark);rail.position.set(x,-.02,2.14);scene.add(rail);return rail;});
+  const deckRail=new THREE.Mesh(new THREE.BoxGeometry(.18,.16,4.25),aluminum);deckRail.position.set(-.88,deck-.02,0);scene.add(deckRail);
   for(let i=0;i<4;i++){
    const z=zAt(i);
    const liner=new THREE.Mesh(new THREE.CylinderGeometry(bore,bore,stroke+.28,48,1,true),new THREE.MeshStandardMaterial({color:0xa5b1b3,metalness:.9,roughness:.22,side:THREE.DoubleSide}));
@@ -81,18 +82,18 @@ export default function InlineFourScene(props:Props) {
   for(let i=0;i<5;i++){const b=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.2,24),forged);b.rotation.x=Math.PI/2;b.position.z=-1.9+i*.95;crank.add(b);}
   const throws:THREE.Group[]=[];
   for(let i=0;i<4;i++){
-   const g=new THREE.Group();g.position.set(0,crankY,zAt(i));
+   const g=new THREE.Group();g.position.set(0,0,zAt(i));
    for(const dz of [-.22,.22]){const web=new THREE.Mesh(new THREE.BoxGeometry(.18,.9,.15),forged);web.position.set(0,cr*.42,dz);g.add(web);}
    const pin=new THREE.Mesh(new THREE.CylinderGeometry(.13,.13,.48,22),bronze);pin.rotation.x=Math.PI/2;pin.position.y=cr;g.add(pin);
    const cw=new THREE.Mesh(new THREE.BoxGeometry(.34,.46,.38),dark);cw.position.y=-cr*.72;g.add(cw);
    crank.add(g);throws.push(g);
   }
-  scene.add(crank);
+  crank.position.y=crankY;scene.add(crank);
 
   // Timing belt and sprockets at the front of the engine.
   const drive=new THREE.Group();
-  for(const [r,y] of [[.28,crankY],[.35,headY+.25],[.35,headY+.25]] as number[][]){
-   const wheel=new THREE.Mesh(new THREE.CylinderGeometry(r,r,.12,40),bronze);wheel.rotation.x=Math.PI/2;wheel.position.set(0,y,2.2-(drive.children.length?drive.children.length*.35:0));drive.add(wheel);
+  for(const [r,x,y] of [[.28,0,crankY],[.35,-.52,headY+.25],[.35,.52,headY+.25]] as number[][]){
+   const wheel=new THREE.Mesh(new THREE.CylinderGeometry(r,r,.12,40),bronze);wheel.rotation.x=Math.PI/2;wheel.position.set(x,y,2.2);drive.add(wheel);
   }
   const beltPath=new THREE.CatmullRomCurve3([V(-.28,crankY,2.24),V(-.34,-.5,2.24),V(-.35,.7,2.24),V(-.34,headY+.55,2.24),V(.34,headY+.55,2.24),V(.35,.7,2.24),V(.34,-.5,2.24),V(.28,crankY,2.24)]);
   drive.add(new THREE.Mesh(new THREE.TubeGeometry(beltPath,64,.035,8,true),steel));scene.add(drive);
@@ -143,7 +144,7 @@ export default function InlineFourScene(props:Props) {
   s.parts.forEach((c,i)=>{
    const z=(i-1.5)*spacing,local=crankRad+mech[i],cycle=props.angle+offsets[i],v=calculateValveState(cycle),telemetry=props.cylinderStates[i];
    const k=calculateSliderCrankState(props.geometry,local,0),dy=k.pistonDisplacementM/props.geometry.strokeM*stroke,pistonY=deck-dy-.12;
-   c.piston.position.set(0,pistonY,z);between(c.rod,V(0,pistonY,z),V(cr*Math.sin(local),crankY+cr*Math.cos(local),z));c.throw.rotation.z=-local;
+   c.piston.position.set(0,pistonY,z);between(c.rod,V(0,pistonY,z),V(cr*Math.sin(local),crankY+cr*Math.cos(local),z));c.throw.rotation.z=-mech[i];
    c.intake.forEach(x=>{x.position.y=headY+.04-v.intakeLiftMm*.035;});
    c.exhaust.forEach(x=>{x.position.y=headY+.04-v.exhaustLiftMm*.035;});
    c.spark.visible=v.sparkActive||(props.sparkFlash&&i===0);
