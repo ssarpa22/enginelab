@@ -144,6 +144,9 @@ function InlineFourScene(props:Props){
    const counter=new THREE.Mesh(new RoundedBoxGeometry(.48,.56,.42,4,.12),dark);counter.position.set(0,-r*.7,0);t.add(counter);
    crank.add(t);throws.push(t);
   }
+  // Exposed crankshaft nose physically bridges the main shaft to the lower timing pulley.
+  const crankNose=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.48,40),steel);crankNose.rotation.x=Math.PI/2;crankNose.position.z=length/2+.015;crank.add(crankNose);
+  const crankNoseCollar=new THREE.Mesh(new THREE.CylinderGeometry(.205,.205,.10,40),forged);crankNoseCollar.rotation.x=Math.PI/2;crankNoseCollar.position.z=length/2+.16;crank.add(crankNoseCollar);
   scene.add(crank);
   // Flywheel and ring gear share the crankshaft axis; the starter pinion engages only while cranking.
   const flywheel=new THREE.Group();
@@ -250,6 +253,14 @@ function InlineFourScene(props:Props){
   const mufflerCapB=new THREE.Mesh(new THREE.CylinderGeometry(.20,.20,.10,36),steel);mufflerCapB.rotation.x=Math.PI/2;mufflerCapB.position.z=.53;muffler.add(mufflerCapB);
   muffler.position.set(width*1.02,-.34,length*.80);scene.add(muffler);
   makeTube(scene,[vec(width*1.02,-.34,length*.80+.50),vec(width*1.10,-.34,length*.92),vec(width*1.18,-.34,length*1.02)],.105,steel);
+  // Each port starts at its own valve seat, then joins the corresponding intake/exhaust collector.
+  for(let i=0;i<4;i++){
+   const z=zAt(i);
+   for(const dz of [-bore*.12,bore*.12]){
+    makeTube(scene,[vec(-bore*.28,deck-.005,z+dz),vec(-bore*.36,deck-.035,z+dz),vec(-width*.43,deck-.08,z+dz*.72),vec(-width*.50,deck-.04,z+.16)],.058,intakeMaterial);
+    makeTube(scene,[vec(bore*.28,deck-.005,z+dz),vec(bore*.36,deck-.035,z+dz),vec(width*.43,deck-.08,z+dz*.72),vec(width*.50,deck-.04,z-.16)],.061,exhaustMaterial);
+   }
+  }
   // Individual four-into-one runners give the gas paths a recognisable cast-manifold layout.
   for(let i=0;i<4;i++){
    const z=zAt(i);
@@ -314,7 +325,7 @@ function InlineFourScene(props:Props){
   s.cams.forEach(cam=>{cam.rotation.z=-coupling.camshaftAngleDeg*Math.PI/180;});
   s.timingPulleys.forEach((pulley,index)=>{pulley.rotation.z=index===0?-crankAngle:-coupling.camshaftAngleDeg*Math.PI/180;});
   if(s.timingBeltMaterial.map)s.timingBeltMaterial.map.offset.x=-((props.angle%360)/360)*.24;
-  s.oilPump.rotation.z=-crankAngle*2;
+  // The oil pump remains static until its drive gear train is modelled.
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
   s.metalMaterials[0]!.color.setHex(props.systems.headTemperatureC>180?0x9d5540:0x879599);
  },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems,props.starterActive]);
