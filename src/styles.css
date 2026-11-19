@@ -192,3 +192,12 @@
 .section-valve-stem{stroke-width:6}
 .section-valve-head{stroke-width:7}
 @media(max-width:620px){.two-d-controls{grid-template-columns:1fr;gap:8px}.two-d-play{grid-row:auto;width:100%}.two-d-controls label,.two-d-controls input[type=range],.two-d-speed-ends{grid-column:1}.two-d-controls label{font-size:7px}}
+
+/* 2D valve train: visible seat contact, bucket-to-cam contact and compressed spring. */
+.section-valve-seat{fill:none;stroke:#d6e0db;stroke-width:2.5;stroke-linecap:round;opacity:.9}
+.section-spring-seat{fill:none;stroke:#7f918e;stroke-width:3;stroke-linecap:round}
+.section-cam-lobe{fill:#bd9865;stroke:#f0c98c;stroke-width:1.5;stroke-linejoin:round}
+.section-follower{fill:#9ca9a6;stroke:#e0e8e3;stroke-width:1.5}
+
+.legend-note{color:#778983;font-size:8px;letter-spacing:.02em}
+@media(max-width:620px){.legend-note{font-size:6px}}

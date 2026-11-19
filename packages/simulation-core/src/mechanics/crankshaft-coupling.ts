@@ -27,6 +27,29 @@ export interface CrankshaftDynamicState {
   rpm: number;
 }
 
+export const MAX_CRANKSHAFT_ANGLE_STEP_DEG = 4;
+
+/**
+ * Keeps crankshaft integration from jumping over large portions of a cycle at
+ * high RPM. The outer fixed clock still owns elapsed simulation time; this
+ * helper only subdivides each outer step according to shaft speed.
+ */
+export function calculateCrankshaftSubstepSeconds(
+  remainingSeconds: number,
+  rpm: number,
+  targetRpm: number
+): number {
+  if (![remainingSeconds, rpm, targetRpm].every(Number.isFinite) ||
+      remainingSeconds < 0 || rpm < 0 || targetRpm < 0) {
+    throw new RangeError("Crankshaft substep inputs must be finite and non-negative.");
+  }
+  if (remainingSeconds === 0) return 0;
+  const planningRpm = Math.max(rpm, targetRpm);
+  if (planningRpm === 0) return remainingSeconds;
+  const maxStepSeconds = MAX_CRANKSHAFT_ANGLE_STEP_DEG / (6 * planningRpm);
+  return Math.min(remainingSeconds, maxStepSeconds);
+}
+
 export interface CrankshaftStepOptions {
   targetRpm: number;
   dtSeconds: number;

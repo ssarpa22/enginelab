@@ -2,12 +2,13 @@ name: Validate
 
 on:
   pull_request:
-    branches: [main, "feat/**"]
+    branches: [main, "feat/**", "fix/**"]
   push:
     branches:
       - main
       - "feat/**"
       - "ci/**"
+      - "fix/**"
 
 permissions:
   contents: read

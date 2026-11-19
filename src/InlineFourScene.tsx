@@ -5,7 +5,8 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import type { CylinderMechanicalState, EngineSystemsState } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { calculateInlineFourCrankCoupling } from "../packages/simulation-core/src/mechanics/crankshaft-coupling";
-import { INLINE_FOUR_CRANK_PHASES_DEG } from "../packages/simulation-core/src/mechanics/inline-four";
+import { INLINE_FOUR_CRANK_PHASES_DEG, INLINE_FOUR_CYCLE_OFFSETS_DEG } from "../packages/simulation-core/src/mechanics/inline-four";
+import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { createAdaptiveResolutionState, updateAdaptiveResolution } from "./rendering/adaptive-resolution";
 
 type CylinderTelemetry={pressurePa:number};
@@ -26,6 +27,28 @@ function timingBeltPath(pulleys:{x:number;y:number;r:number}[],z:number){
  return new THREE.CatmullRomCurve3(hull.map(point=>vec(point.x,point.y,z)),true,"centripetal");
 }
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
+const wrapCycle=(angle:number)=>((angle%720)+720)%720;
+function valveEventCenter(start:number,end:number){
+ const span=end>=start?end-start:720-start+end;
+ return wrapCycle(start+span/2);
+}
+const INTAKE_CAM_CENTER=valveEventCenter(720-DEFAULT_VALVE_TIMING.intakeOpensBtdc,180+DEFAULT_VALVE_TIMING.intakeClosesAbdc);
+const EXHAUST_CAM_CENTER=valveEventCenter(540-DEFAULT_VALVE_TIMING.exhaustOpensBbdc,DEFAULT_VALVE_TIMING.exhaustClosesAtdc);
+function createCamLobeShape(kind:"intake"|"exhaust",centerCycle:number,cylinderOffset:number,scale:number){
+ const shape=new THREE.Shape();
+ for(let step=0;step<=144;step++){
+  const angleDeg=step/144*360;
+  const localCycle=wrapCycle(centerCycle+2*(angleDeg+90)+cylinderOffset);
+  const valve=calculateValveState(localCycle);
+  const liftMm=kind==="intake"?valve.intakeLiftMm:valve.exhaustLiftMm;
+  const radius=.135+liftMm/1000*scale;
+  const angle=angleDeg*Math.PI/180;
+  const x=Math.cos(angle)*radius,y=Math.sin(angle)*radius;
+  if(step===0)shape.moveTo(x,y);else shape.lineTo(x,y);
+ }
+ shape.closePath();
+ return shape;
+}
 const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
@@ -62,7 +85,12 @@ function InlineFourScene(props:Props){
   // The crankcase and block are separate cast sections. The front service face is removed for inspection.
   const lowerY=-.72,blockHeight=deck-lowerY,blockCenter=(deck+lowerY)/2;
   const sideWall=new THREE.Mesh(new RoundedBoxGeometry(.22,blockHeight,length,4,.045),dark);sideWall.position.set(-width/2,blockCenter,0);sideWall.castShadow=true;sideWall.receiveShadow=true;scene.add(sideWall);
-  const rearWall=new THREE.Mesh(new RoundedBoxGeometry(width,blockHeight,.2,4,.045),dark);rearWall.position.set(0,blockCenter,-length/2);rearWall.castShadow=true;scene.add(rearWall);
+  // Rear inspection opening exposes the flywheel and starter ring gear on the opposite crankshaft end.
+  const rearWallShape=new THREE.Shape();
+  rearWallShape.moveTo(-width/2,lowerY);rearWallShape.lineTo(width/2,lowerY);rearWallShape.lineTo(width/2,deck);rearWallShape.lineTo(-width/2,deck);rearWallShape.closePath();
+  const crankcaseInspectionOpening=new THREE.Path();crankcaseInspectionOpening.absarc(0,0,1.05,0,Math.PI*2,true);rearWallShape.holes.push(crankcaseInspectionOpening);
+  const rearWallGeometry=new THREE.ExtrudeGeometry(rearWallShape,{depth:.2,bevelEnabled:false});rearWallGeometry.translate(0,0,-.1);
+  const rearWall=new THREE.Mesh(rearWallGeometry,dark);rearWall.position.z=-length/2;rearWall.castShadow=true;scene.add(rearWall);
   const frontRails=[-.42,.42].map(x=>{const rail=new THREE.Mesh(new RoundedBoxGeometry(width*.48,blockHeight*.88,.18,4,.035),dark);rail.position.set(x,blockCenter,length/2);scene.add(rail);return rail;});
   // Open deck cutaway: two structural rails leave the four bores visible.
   for(const x of [-1,1]){
@@ -112,23 +140,19 @@ function InlineFourScene(props:Props){
    const bridge=new THREE.Mesh(new RoundedBoxGeometry(width*.86,.42,.18,4,.045),aluminium);
    bridge.position.set(0,deck+.27,z*length*.48);bridge.castShadow=true;scene.add(bridge);
   }
-  // DOHC shafts, eccentric lobes, bucket followers and real compression travel in visible valve springs.
+  // DOHC cam lobes are profiled from the same valve-timing curve as the followers.
+  // Their base circles touch the buckets at zero lift; the nose adds the exact nominal lift.
   const cams:THREE.Group[]=[];
   for(const x of [-bore*.28,bore*.28]){
+   const intakeCam=x<0,camCenter=intakeCam?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;
    const cam=new THREE.Group(),shaft=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,length*.94,28),bronze);shaft.rotation.x=Math.PI/2;cam.add(shaft);
    for(let i=0;i<4;i++)for(const dx of [-bore*.12,bore*.12]){
-    const profile=new THREE.Shape();
-    for(let step=0;step<=72;step++){
-     const a=step/72*Math.PI*2,delta=Math.atan2(Math.sin(a-Math.PI/2),Math.cos(a-Math.PI/2));
-     const radius=.135+.13*Math.exp(-(delta*delta)/.19),x=Math.cos(a)*radius,y=Math.sin(a)*radius;
-     if(step===0)profile.moveTo(x,y);else profile.lineTo(x,y);
-    }
-    profile.closePath();
-    const lobeGeometry=new THREE.ExtrudeGeometry(profile,{depth:.14,steps:1,bevelEnabled:true,bevelSegments:3,bevelThickness:.018,bevelSize:.012});lobeGeometry.translate(0,0,-.07);
+    const profile=createCamLobeShape(intakeCam?"intake":"exhaust",camCenter,INLINE_FOUR_CYCLE_OFFSETS_DEG[i]!,scale);
+    const lobeGeometry=new THREE.ExtrudeGeometry(profile,{depth:.14,steps:1,bevelEnabled:true,bevelSegments:3,bevelThickness:.012,bevelSize:.008});lobeGeometry.translate(0,0,-.07);
     const lobe=new THREE.Mesh(lobeGeometry,steel);lobe.position.set(0,0,zAt(i)+dx);lobe.castShadow=true;cam.add(lobe);
    }
    for(let i=0;i<5;i++){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.16,20),dark);cap.rotation.x=Math.PI/2;cap.position.z=-length*.43+i*length*.215;cam.add(cap);}
-   cam.position.set(x,deck+.91,0);scene.add(cam);cams.push(cam);
+   cam.position.set(x,deck+.955,0);scene.add(cam);cams.push(cam);
   }
   // Crankshaft with five main journals, four throws, counterweights and crankpins.
   const crank=new THREE.Group(),main=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,length*.98,28),steel);main.rotation.x=Math.PI/2;crank.add(main);
@@ -147,6 +171,7 @@ function InlineFourScene(props:Props){
   // Exposed crankshaft nose physically bridges the main shaft to the lower timing pulley.
   const crankNose=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.48,40),steel);crankNose.rotation.x=Math.PI/2;crankNose.position.z=length/2+.015;crank.add(crankNose);
   const crankNoseCollar=new THREE.Mesh(new THREE.CylinderGeometry(.205,.205,.10,40),forged);crankNoseCollar.rotation.x=Math.PI/2;crankNoseCollar.position.z=length/2+.16;crank.add(crankNoseCollar);
+  const flywheelNose=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.28,40),steel);flywheelNose.rotation.x=Math.PI/2;flywheelNose.position.z=-length/2-.13;crank.add(flywheelNose);
   scene.add(crank);
   // Flywheel and ring gear share the crankshaft axis; the starter pinion engages only while cranking.
   const flywheel=new THREE.Group();
@@ -154,19 +179,19 @@ function InlineFourScene(props:Props){
   const flywheelHub=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.24,40),steel);flywheelHub.rotation.x=Math.PI/2;flywheel.add(flywheelHub);
   const ringGear=new THREE.Mesh(new THREE.TorusGeometry(.61,.055,12,96),bronze);flywheel.add(ringGear);
   for(let tooth=0;tooth<56;tooth++){const a=tooth/56*Math.PI*2,gearTooth=new THREE.Mesh(new RoundedBoxGeometry(.075,.11,.16,3,.012),steel);gearTooth.position.set(Math.cos(a)*.655,Math.sin(a)*.655,0);gearTooth.rotation.z=a;flywheel.add(gearTooth);}
-  flywheel.position.set(0,0,length/2+.28);scene.add(flywheel);
+  flywheel.position.set(0,0,-length/2-.12);scene.add(flywheel);
   const starterMotor=new THREE.Group();
   const motorCan=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.62,36),dark);motorCan.rotation.x=Math.PI/2;motorCan.position.set(.96,-.38,0);starterMotor.add(motorCan);
   const motorEnd=new THREE.Mesh(new THREE.CylinderGeometry(.205,.205,.12,36),forged);motorEnd.rotation.x=Math.PI/2;motorEnd.position.set(.96,-.38,-.32);starterMotor.add(motorEnd);
   const solenoid=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.42,28),bronze);solenoid.rotation.x=Math.PI/2;solenoid.position.set(1.18,-.16,.02);starterMotor.add(solenoid);
-  starterMotor.position.z=length/2+.28;scene.add(starterMotor);
+  starterMotor.position.z=-length/2-.12;scene.add(starterMotor);
   const starterPinion=new THREE.Group();
   const pinionCore=new THREE.Mesh(new THREE.CylinderGeometry(.125,.125,.16,32),bronze);pinionCore.rotation.x=Math.PI/2;starterPinion.add(pinionCore);
   for(let tooth=0;tooth<14;tooth++){const a=tooth/14*Math.PI*2,gearTooth=new THREE.Mesh(new RoundedBoxGeometry(.065,.07,.14,3,.01),steel);gearTooth.position.set(Math.cos(a)*.145,Math.sin(a)*.145,0);gearTooth.rotation.z=a;starterPinion.add(gearTooth);}
-  starterPinion.position.set(.96,0,length/2+.28);scene.add(starterPinion);
+  starterPinion.position.set(.96,0,-length/2-.12);scene.add(starterPinion);
   const starterShaft=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,1,18),bronze);starterShaft.castShadow=true;scene.add(starterShaft);
   // Front timing drive: toothed belt/pulleys are mechanically linked to crank and half-speed cams.
-  const timing=new THREE.Group(),timingPulleys:THREE.Group[]=[],pulleyPositions=[[0,crankY,.24],[-bore*.28,deck+.91,.48],[bore*.28,deck+.91,.48]] as [number,number,number][];
+  const timing=new THREE.Group(),timingPulleys:THREE.Group[]=[],pulleyPositions=[[0,crankY,.24],[-bore*.28,deck+.955,.48],[bore*.28,deck+.955,.48]] as [number,number,number][];
   for(const [index,[x,y,rad]] of pulleyPositions.entries()){
     const pulley=new THREE.Group();pulley.position.set(x,y,length/2+.18);
     const hub=new THREE.Mesh(new THREE.CylinderGeometry(rad*.72,rad*.72,.19,48),forged);hub.rotation.x=Math.PI/2;pulley.add(hub);
@@ -318,12 +343,12 @@ function InlineFourScene(props:Props){
    // Gas exchange and combustion are rendered in the dedicated 2D flow panel, not as 3D particles.
   });
   s.crank.rotation.z=-crankAngle;s.flywheel.rotation.z=-crankAngle;
-  const pinionX=props.starterActive ? .79 : .96;
+  const pinionX=props.starterActive ? .81 : .96;
   s.starterPinion.position.x=pinionX;
   s.starterPinion.rotation.z=props.starterActive?props.angle*Math.PI/180*4:0;
-  between(s.starterShaft,vec(.96,-.38,length/2+.28),vec(pinionX,0,length/2+.28));
-  s.cams.forEach(cam=>{cam.rotation.z=-coupling.camshaftAngleDeg*Math.PI/180;});
-  s.timingPulleys.forEach((pulley,index)=>{pulley.rotation.z=index===0?-crankAngle:-coupling.camshaftAngleDeg*Math.PI/180;});
+  between(s.starterShaft,vec(.96,-.38,-length/2-.12),vec(pinionX,0,-length/2-.12));
+  s.cams.forEach((cam,index)=>{const center=index===0?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;cam.rotation.z=(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
+  s.timingPulleys.forEach((pulley,index)=>{const center=index===1?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;pulley.rotation.z=index===0?-crankAngle:(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
   if(s.timingBeltMaterial.map)s.timingBeltMaterial.map.offset.x=-((props.angle%360)/360)*.24;
   // The oil pump remains static until its drive gear train is modelled.
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);

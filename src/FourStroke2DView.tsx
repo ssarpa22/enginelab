@@ -1,10 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
-import { calculateValveState } from "../packages/simulation-core/src/mechanics/valve-timing";
+import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import GasFlowPanel from "./GasFlowPanel";
 
 type Phase = "Intake" | "Compression" | "Power" | "Exhaust";
+const wrapDegrees=(angle:number,period=720)=>((angle%period)+period)%period;
+function valveEventCenter(start:number,end:number){
+  const span=end>=start?end-start:720-start+end;
+  return wrapDegrees(start+span/2);
+}
+const INTAKE_CAM_CENTER=valveEventCenter(720-DEFAULT_VALVE_TIMING.intakeOpensBtdc,180+DEFAULT_VALVE_TIMING.intakeClosesAbdc);
+const EXHAUST_CAM_CENTER=valveEventCenter(540-DEFAULT_VALVE_TIMING.exhaustOpensBbdc,DEFAULT_VALVE_TIMING.exhaustClosesAtdc);
+function camProfilePath(centerCycle:number,kind:"intake"|"exhaust",scale:number){
+  const points:string[]=[];
+  for(let index=0;index<=120;index++){
+    const localAngleDeg=index/120*360;
+    const cycleAtPoint=wrapDegrees(centerCycle+180-localAngleDeg*2);
+    const state=calculateValveState(cycleAtPoint);
+    const lift=kind==="intake"?state.intakeLiftMm:state.exhaustLiftMm;
+    const radius=9+lift*scale/1000;
+    const angle=localAngleDeg*Math.PI/180;
+    points.push(`${(Math.cos(angle)*radius).toFixed(3)} ${(Math.sin(angle)*radius).toFixed(3)}`);
+  }
+  return `M${points.join(" L")} Z`;
+}
+function springPath(x:number,startY:number,endY:number){
+  const points=[`M${x} ${startY}`];
+  const coils=5;
+  for(let index=1;index<coils*2;index++){
+    const px=x+(index%2===0?-10:10);
+    const py=startY+(endY-startY)*index/(coils*2);
+    points.push(`L${px.toFixed(2)} ${py.toFixed(2)}`);
+  }
+  points.push(`L${x} ${endY}`);
+  return points.join(" ");
+}
 type Props = { geometry: EngineGeometry };
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 const fmt=(value:number,digits=1)=>Number.isFinite(value)?value.toFixed(digits):"—";
@@ -24,12 +55,14 @@ export default function FourStroke2DView({geometry}:Props){
     if(!playing)return;
     let frame=0,last=0;
     const tick=(time:number)=>{
-      if(last!==0){
-        const elapsed=Math.min((time-last)/1000,.05);
-        // The teaching animation is deliberately independent from the 3D engine clock.
-        setCycleAngle(angle=>(angle+elapsed*90*speed)%720);
+      if(last===0)last=time;
+      const elapsed=(time-last)/1000;
+      // 30 updates/s keeps the SVG readable without rerendering the whole diagram every display frame.
+      if(elapsed>=1/30){
+        const delta=Math.min(elapsed,.1);
+        setCycleAngle(angle=>(angle+delta*90*speed)%720);
+        last=time;
       }
-      last=time;
       frame=requestAnimationFrame(tick);
     };
     frame=requestAnimationFrame(tick);
@@ -52,8 +85,9 @@ export default function FourStroke2DView({geometry}:Props){
   const left=cx-boreWidth/2,right=cx+boreWidth/2;
   const intakeLift=valve.intakeLiftMm*scale/1000;
   const exhaustLift=valve.exhaustLiftMm*scale/1000;
-  const intakeValveY=73+intakeLift,exhaustValveY=73+exhaustLift;
-  const chamberTop=84,chamberHeight=Math.max(0,pistonTop-chamberTop);
+  const valveSeatY=84;
+  const intakeValveY=valveSeatY+intakeLift,exhaustValveY=valveSeatY+exhaustLift;
+  const chamberTop=valveSeatY,chamberHeight=Math.max(0,pistonTop-chamberTop);
   const pressureBar=phase==="Power"?Math.max(8,18*Math.sin(Math.PI*clamp((cycle-360)/180,0,1))):phase==="Compression"?1+5*clamp((cycle-180)/180,0,1):phase==="Exhaust"?1.08:0.92;
   const tempC=phase==="Power"?Math.round(520+780*Math.sin(Math.PI*clamp((cycle-360)/180,0,1))):phase==="Compression"?Math.round(90+230*clamp((cycle-180)/180,0,1)):phase==="Exhaust"?480:65;
   const intakeStrength=valve.intakeOpen ? 0.8 : 0;
@@ -63,7 +97,10 @@ export default function FourStroke2DView({geometry}:Props){
   const intakeFlow=valve.intakeOpen ? 0.024 : 0;
   const exhaustFlow=valve.exhaustOpen ? 0.021 : 0;
   const speedLabel=speed<.3?"MUY LENTA":speed<.7?"LENTA":"NORMAL";
-  const camRotationDeg=cycle/2;
+  const intakeCamRotation=(cycle-INTAKE_CAM_CENTER)/2;
+  const exhaustCamRotation=(cycle-EXHAUST_CAM_CENTER)/2;
+  const intakeCamPath=useMemo(()=>camProfilePath(INTAKE_CAM_CENTER,"intake",scale),[scale]);
+  const exhaustCamPath=useMemo(()=>camProfilePath(EXHAUST_CAM_CENTER,"exhaust",scale),[scale]);
   return <section className="four-stroke-2d" aria-label="Corte bidimensional independiente del ciclo de cuatro tiempos">
     <div className="four-stroke-2d-toolbar"><div><span className="view-live-dot"/><span>SECCIÓN LONGITUDINAL · CICLO DIDÁCTICO INDEPENDIENTE</span></div><span className="view-angle">{fmt(cycle,0)}° / 720°</span></div>
     <div className="two-d-controls">
@@ -95,29 +132,31 @@ export default function FourStroke2DView({geometry}:Props){
         <path d={`M${left-34} 246 H${right+34} V300 H${left-34} Z`} fill="#1a2427" stroke="#59696d" strokeWidth="2"/>
       </g>
       <g className="section-ports">
-        <path d={`M20 94 H${cx-70} Q${cx-52} 94 ${cx-42} 73`} className="section-intake-port"/>
-        <path d={`M${cx+42} 73 Q${cx+52} 94 ${cx+70} 94 H740`} className="section-exhaust-port"/>
-        <path d={`M20 94 H${cx-70} Q${cx-52} 94 ${cx-42} 73`} className="section-port-glass"/>
-        <path d={`M${cx+42} 73 Q${cx+52} 94 ${cx+70} 94 H740`} className="section-port-glass"/>
-        <path d={`M22 94 H${cx-70} Q${cx-52} 94 ${cx-42} 73`} className="section-intake-flow" style={{opacity:intakeStrength}}/>
-        <path d={`M${cx+42} 73 Q${cx+52} 94 ${cx+70} 94 H738`} className="section-exhaust-flow" style={{opacity:exhaustStrength}}/>
+        <path d={`M20 94 H${cx-70} Q${cx-52} 94 ${cx-42} ${valveSeatY}`} className="section-intake-port"/>
+        <path d={`M${cx+42} ${valveSeatY} Q${cx+52} 94 ${cx+70} 94 H740`} className="section-exhaust-port"/>
+        <path d={`M20 94 H${cx-70} Q${cx-52} 94 ${cx-42} ${valveSeatY}`} className="section-port-glass"/>
+        <path d={`M${cx+42} ${valveSeatY} Q${cx+52} 94 ${cx+70} 94 H740`} className="section-port-glass"/>
+        <path d={`M22 94 H${cx-70} Q${cx-52} 94 ${cx-42} ${valveSeatY}`} className="section-intake-flow" style={{opacity:intakeStrength}}/>
+        <path d={`M${cx+42} ${valveSeatY} Q${cx+52} 94 ${cx+70} 94 H738`} className="section-exhaust-flow" style={{opacity:exhaustStrength}}/>
+        <path d={`M${cx-58} ${valveSeatY} H${cx-26} M${cx+26} ${valveSeatY} H${cx+58}`} className="section-valve-seat"/>
         <text x="24" y="67" className="section-label intake">COLECTOR DE ADMISIÓN</text><text x="736" y="67" textAnchor="end" className="section-label exhaust">COLECTOR DE ESCAPE</text>
       </g>
       <g className="section-valves">
-        <g className="section-cam-assembly" transform={`rotate(${camRotationDeg} ${cx-42} 18)`}>
-          <circle cx={cx-42} cy="18" r="12" className="section-cam-base"/><ellipse cx={cx-42} cy="7" rx="8" ry="15" className="section-cam-lobe"/>
+        <g className="section-cam-assembly" transform={`translate(${cx-42} 18) rotate(${intakeCamRotation})`}>
+          <circle cx="0" cy="0" r="9" className="section-cam-base"/><path d={intakeCamPath} className="section-cam-lobe"/>
         </g>
-        <g className="section-cam-assembly" transform={`rotate(${camRotationDeg} ${cx+42} 18)`}>
-          <circle cx={cx+42} cy="18" r="12" className="section-cam-base"/><ellipse cx={cx+42} cy="7" rx="8" ry="15" className="section-cam-lobe"/>
+        <g className="section-cam-assembly" transform={`translate(${cx+42} 18) rotate(${exhaustCamRotation})`}>
+          <circle cx="0" cy="0" r="9" className="section-cam-base"/><path d={exhaustCamPath} className="section-cam-lobe"/>
         </g>
-        <rect x={cx-53} y={22+intakeLift} width="22" height="9" rx="2" className="section-follower"/>
-        <rect x={cx+31} y={22+exhaustLift} width="22" height="9" rx="2" className="section-follower"/>
-        <path d={`M${cx-42} ${30+intakeLift} V${intakeValveY}`} className="section-valve-stem intake"/>
-        <path d={`M${cx-57} ${intakeValveY} Q${cx-42} ${intakeValveY+7} ${cx-27} ${intakeValveY}`} className="section-valve-head intake"/>
-        <path d={`M${cx+42} ${30+exhaustLift} V${exhaustValveY}`} className="section-valve-stem exhaust"/>
-        <path d={`M${cx+27} ${exhaustValveY} Q${cx+42} ${exhaustValveY+7} ${cx+57} ${exhaustValveY}`} className="section-valve-head exhaust"/>
-        <path d={`M${cx-42} ${34+intakeLift} C${cx-63} ${37+intakeLift} ${cx-63} ${47+intakeLift} ${cx-42} ${49+intakeLift} S${cx-21} 64 ${cx-42} 66 S${cx-63} 74 ${cx-42} 76`} className="section-valve-spring"/>
-        <path d={`M${cx+42} ${34+exhaustLift} C${cx+21} ${37+exhaustLift} ${cx+21} ${47+exhaustLift} ${cx+42} ${49+exhaustLift} S${cx+63} 64 ${cx+42} 66 S${cx+63} 74 ${cx+42} 76`} className="section-valve-spring"/>
+        <rect x={cx-53} y={27+intakeLift} width="22" height="7" rx="2" className="section-follower"/>
+        <rect x={cx+31} y={27+exhaustLift} width="22" height="7" rx="2" className="section-follower"/>
+        <path d={`M${cx-42} ${34+intakeLift} V${intakeValveY}`} className="section-valve-stem intake"/>
+        <path d={`M${cx-58} ${intakeValveY} Q${cx-42} ${intakeValveY+5} ${cx-26} ${intakeValveY}`} className="section-valve-head intake"/>
+        <path d={`M${cx+42} ${34+exhaustLift} V${exhaustValveY}`} className="section-valve-stem exhaust"/>
+        <path d={`M${cx+26} ${exhaustValveY} Q${cx+42} ${exhaustValveY+5} ${cx+58} ${exhaustValveY}`} className="section-valve-head exhaust"/>
+        <path d={springPath(cx-42,39+intakeLift,78)} className="section-valve-spring"/>
+        <path d={springPath(cx+42,39+exhaustLift,78)} className="section-valve-spring"/>
+        <path d={`M${cx-54} 78 H${cx-30} M${cx+30} 78 H${cx+54}`} className="section-spring-seat"/>
         {spark&&<g className="section-spark"><path d={`M${cx} 69 l-9 13 8-2-4 13 14-17-9 2 5-9z`}/><circle cx={cx} cy="80" r="17"/></g>}
       </g>
       <g clipPath="url(#cylinderChamber)">
