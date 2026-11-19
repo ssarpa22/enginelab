@@ -201,7 +201,7 @@ function App() {
         if(seized){
           setShaftRpm(0);
           setRunning(false);
-        }else if(time-lastUiPaint>=33){
+        }else if(time-lastUiPaint>=16){
           setCycleAngle(crankshaftRef.current.cycleAngleDeg);
           setShaftRpm(crankshaftRef.current.rpm);
           lastUiPaint=time;
