@@ -79,8 +79,8 @@ export default function InlineFourScene(props:Props){
   }
   scene.add(crank);
   // Front timing drive: toothed belt/pulleys are mechanically linked to crank and half-speed cams.
-  const timing=new THREE.Group(),pulleyPositions=[[0,crankY,.34],[-width*.28,deck+.91,.42],[width*.28,deck+.91,.42]] as [number,number,number][];
-  for(const [x,y,rad] of pulleyPositions){const pulley=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,.18,48),bronze);pulley.rotation.x=Math.PI/2;pulley.position.set(x,y,length/2+.18);timing.add(pulley);}
+  const timing=new THREE.Group(),timingPulleys:THREE.Mesh[]=[],pulleyPositions=[[0,crankY,.34],[-bore*.28,deck+.91,.42],[bore*.28,deck+.91,.42]] as [number,number,number][];
+  for(const [x,y,rad] of pulleyPositions){const pulley=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,.18,48),bronze);pulley.rotation.x=Math.PI/2;pulley.position.set(x,y,length/2+.18);timing.add(pulley);timingPulleys.push(pulley);}
   const belt=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([vec(-.34,crankY,length/2+.28),vec(-.5,deck*.35,length/2+.28),vec(-.55,deck+.91,length/2+.28),vec(.55,deck+.91,length/2+.28),vec(.5,deck*.35,length/2+.28),vec(.34,crankY,length/2+.28)]),96,.045,10,false),black);timing.add(belt);scene.add(timing);
   const parts:Part[]=[],intakeCurves:THREE.CatmullRomCurve3[]=[],exhaustCurves:THREE.CatmullRomCurve3[]=[];
   for(let i=0;i<4;i++){
