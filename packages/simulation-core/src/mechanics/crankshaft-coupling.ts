@@ -29,7 +29,7 @@ export interface CrankshaftDynamicState {
 
 export const MAX_CRANKSHAFT_ANGLE_STEP_DEG = 4;
 /** Conservative preview cap while the rigid-body train is being validated. */
-export const MAX_CRANKSHAFT_RPM = 100;
+export const MAX_CRANKSHAFT_RPM = 800;
 
 /**
  * Keeps crankshaft integration from jumping over large portions of a cycle at
