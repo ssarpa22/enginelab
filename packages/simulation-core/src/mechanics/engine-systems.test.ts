@@ -46,6 +46,21 @@ describe("constrained inline-four mechanics",()=>{
     expect(state.minimumValveClearanceMm).toBeGreaterThanOrEqual(1-1e-8);
   });
 
+  it("reduces effective valve lift when the valve train floats",()=>{
+    const stable=calculateCylinderMechanics(geometry,90,90,0,7800,DEFAULT_VALVE_TIMING,0);
+    const floating=calculateCylinderMechanics(geometry,250,250,0,7800,DEFAULT_VALVE_TIMING,.8);
+    expect(floating.intakeLiftActualMm).toBeLessThan(stable.intakeLiftActualMm);
+    expect(floating.valveFloatSeverity).toBeCloseTo(.8);
+  });
+
+  it("reduces piston skirt clearance as the piston expands thermally",()=>{
+    const cold=calculateCylinderMechanics(geometry,180,180,0,2500);
+    const hot=calculateCylinderMechanics(geometry,180,180,0,2500,DEFAULT_VALVE_TIMING,0,.12);
+    expect(hot.skirtClearanceMm).toBeLessThan(cold.skirtClearanceMm);
+    expect(hot.skirtClearanceMm).toBeLessThan(0);
+    expect(hot.mechanicalWarning).toContain("Interferencia térmica");
+  });
+
   it("raises oil pressure and pump flow with engine speed, within relief limits",()=>{
     const stopped=advanceEngineSystems(INITIAL_ENGINE_SYSTEMS,{rpm:0,load:0,exhaustGasTemperatureC:25},.1);
     const running=advanceEngineSystems(INITIAL_ENGINE_SYSTEMS,{rpm:3500,load:.65,exhaustGasTemperatureC:650},.1);

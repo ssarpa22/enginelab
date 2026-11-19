@@ -22,6 +22,7 @@ export type CylinderMechanicalState = {
   skirtClearanceMm: number;
   rodToBlockClearanceMm: number;
   mechanicalWarning: string | null;
+  valveFloatSeverity: number;
 };
 
 export type EngineSystemsState = {
@@ -47,6 +48,10 @@ export type EngineSystemsInput = {
   load: number;
   exhaustGasTemperatureC: number;
   ambientTemperatureC?: number;
+  oilLeakLPerMin?: number;
+  coolantLeakLPerMin?: number;
+  oilPickupAvailability?: number;
+  coolantPumpEfficiency?: number;
 };
 
 export const INITIAL_ENGINE_SYSTEMS: EngineSystemsState = {
@@ -80,7 +85,9 @@ export function calculateCylinderMechanics(
   globalCycleAngleDeg: number,
   cylinderIndex: number,
   rpm: number,
-  timing: ValveTiming = DEFAULT_VALVE_TIMING
+  timing: ValveTiming = DEFAULT_VALVE_TIMING,
+  valveFloatSeverity = 0,
+  thermalExpansionMm = 0
 ): CylinderMechanicalState {
   if (!Number.isFinite(rpm) || rpm < 0) throw new RangeError("RPM must be finite and non-negative.");
   const phase = getInlineFourCylinderPhase(globalCrankAngleDeg,globalCycleAngleDeg,cylinderIndex);
@@ -93,17 +100,20 @@ export function calculateCylinderMechanics(
   const minimumSafeClearanceMm=1.0;
   const clearanceBeforeValveMm=deckClearanceM*1000+k.pistonDisplacementM*1000+pocketDepthMm;
   const maxSafeLiftMm=Math.max(0,clearanceBeforeValveMm-minimumSafeClearanceMm);
-  const intakeActual=Math.min(valve.intakeLiftMm,maxSafeLiftMm);
-  const exhaustActual=Math.min(valve.exhaustLiftMm,maxSafeLiftMm);
+  const effectiveLiftFactor=1-clamp(valveFloatSeverity,0,1)*.65;
+  const intakeActual=Math.min(valve.intakeLiftMm*effectiveLiftFactor,maxSafeLiftMm);
+  const exhaustActual=Math.min(valve.exhaustLiftMm*effectiveLiftFactor,maxSafeLiftMm);
   const minimumValveClearanceMm=clearanceBeforeValveMm-Math.max(intakeActual,exhaustActual);
   const valveCollision=valve.intakeLiftMm>maxSafeLiftMm+1e-6||valve.exhaustLiftMm>maxSafeLiftMm+1e-6;
-  const skirtClearanceMm=geometry.boreM*1000*.0007;
+  const skirtClearanceMm=geometry.boreM*1000*.0012-Math.max(0,thermalExpansionMm);
   const rodBigEndRadiusMm=geometry.boreM*1000*.10;
   const crankcaseInnerHalfWidthMm=Math.max(geometry.boreM*1000*.775,
     geometry.crankRadiusM*1000+rodBigEndRadiusMm+6);
   const rodToBlockClearanceMm=crankcaseInnerHalfWidthMm-
     geometry.crankRadiusM*1000-rodBigEndRadiusMm;
   const warning=valveCollision?"Interferencia pistón-válvula evitada por el limitador cinemático":
+    skirtClearanceMm<=0?"Interferencia térmica pistón-cilindro: riesgo de gripado":
+    valveFloatSeverity>.35?"Flotación de válvulas: alzada efectiva reducida":
     rodToBlockClearanceMm<2?"Holgura reducida entre biela y bloque":null;
   return {
     cylinder:cylinderIndex+1,crankAngleRad:theta,cycleAngleDeg:phase.cycleAngleDeg,
@@ -115,7 +125,7 @@ export function calculateCylinderMechanics(
     intakeLiftCommandMm:valve.intakeLiftMm,exhaustLiftCommandMm:valve.exhaustLiftMm,
     intakeLiftActualMm:intakeActual,exhaustLiftActualMm:exhaustActual,
     minimumValveClearanceMm, valveCollision,skirtClearanceMm,rodToBlockClearanceMm,
-    mechanicalWarning:warning
+    mechanicalWarning:warning,valveFloatSeverity:clamp(valveFloatSeverity,0,1)
   };
 }
 
@@ -125,40 +135,50 @@ export function advanceEngineSystems(
   input: EngineSystemsInput,
   dtSeconds: number
 ): EngineSystemsState {
+  const optional=[input.oilLeakLPerMin,input.coolantLeakLPerMin,input.oilPickupAvailability,input.coolantPumpEfficiency];
   if (![input.rpm,input.load,input.exhaustGasTemperatureC,dtSeconds].every(Number.isFinite) ||
+      optional.some(value=>value!==undefined&&!Number.isFinite(value)) ||
       input.rpm<0 || dtSeconds<0 || dtSeconds>1) {
     throw new RangeError("Invalid engine-system input or integration step.");
   }
   const ambient=input.ambientTemperatureC??25;
   const rpmFraction=clamp(input.rpm/6500,0,1.3);
   const load=clamp(input.load,0,1);
+  const oilLeak=clamp(input.oilLeakLPerMin??0,0,10);
+  const coolantLeak=clamp(input.coolantLeakLPerMin??0,0,10);
+  const oilLevelL=clamp(previous.oilLevelL-oilLeak*dtSeconds/60,0,6);
+  const coolantLevelL=clamp(previous.coolantLevelL-coolantLeak*dtSeconds/60,0,10);
+  const oilPickup=clamp(input.oilPickupAvailability??1,0,1)*clamp(oilLevelL/.65,0,1);
+  const coolantPump=clamp(input.coolantPumpEfficiency??1,0,1)*clamp(coolantLevelL/1.2,0,1);
   const oilViscosityFactor=clamp(1.25-(previous.oilTemperatureC-20)*.008,.42,1.35);
-  const pumpPressure= input.rpm===0 ? 0 : Math.min(5.2, .00095*input.rpm*oilViscosityFactor);
+  const pumpPressure= input.rpm===0 ? 0 : Math.min(5.2, .00095*input.rpm*oilViscosityFactor)*oilPickup;
   const relief=5.2;
   const oilPressureBar=Math.min(relief,pumpPressure);
-  const oilFlowLPerMin=input.rpm===0?0:Math.min(32,input.rpm*.0038*oilViscosityFactor);
+  const oilFlowLPerMin=input.rpm===0?0:Math.min(32,input.rpm*.0038*oilViscosityFactor)*oilPickup;
   const bearingFilmRatio=clamp(oilPressureBar/2.2,0,1.6)*clamp(1.2-(previous.oilTemperatureC-90)*.006,.45,1.2);
   const lubricationWarning=input.rpm>650&&(oilPressureBar<1.0||bearingFilmRatio<.55);
 
   const thermostatOpening=clamp((previous.coolantTemperatureC-82)/12,0,1);
-  const coolantFlowLPerMin=input.rpm===0?0:Math.min(95,input.rpm*.012);
-  const coolantPressureBar=input.rpm===0?0:Math.min(1.45,.25+rpmFraction*.85);
+  const coolantFlowLPerMin=input.rpm===0?0:Math.min(95,input.rpm*.012)*coolantPump;
+  const coolantPressureBar=input.rpm===0?0:Math.min(1.45,.25+rpmFraction*.85)*coolantPump;
   const coolantHeatInput=input.rpm===0?0:1800+load*input.rpm*2.1;
   const radiatorHeatRejectionW=thermostatOpening*clamp(coolantFlowLPerMin/45,0,1.5)*
     Math.max(0,previous.coolantTemperatureC-ambient)*95+
     Math.max(0,previous.coolantTemperatureC-ambient)*1.8;
-  const coolantDelta=(coolantHeatInput-radiatorHeatRejectionW)*dtSeconds/25000;
+  const coolantThermalMass=25000*clamp(coolantLevelL/6.2,.12,1);
+  const coolantDelta=(coolantHeatInput-radiatorHeatRejectionW)*dtSeconds/coolantThermalMass;
   const coolantTemperatureC=clamp(previous.coolantTemperatureC+coolantDelta,ambient,125);
   const headTemperatureC=clamp(previous.headTemperatureC+
     ((coolantTemperatureC+load*115)-previous.headTemperatureC)*dtSeconds/18,ambient,260);
   const oilHeatInput=input.rpm===0?0:350+load*input.rpm*.42;
   const oilCooling=(previous.oilTemperatureC-ambient)*(input.rpm===0?.35:2.5+oilFlowLPerMin*.32);
+  const oilThermalMass=12500*clamp(oilLevelL/4.2,.15,1);
   const oilTemperatureC=clamp(previous.oilTemperatureC+
-    (oilHeatInput-oilCooling)*dtSeconds/12500,ambient,190);
+    (oilHeatInput-oilCooling)*dtSeconds/oilThermalMass,ambient,190);
   const exhaustTemperatureC=clamp(input.exhaustGasTemperatureC,ambient,1050);
   return {
-    oilTemperatureC,oilPressureBar,oilFlowLPerMin,oilLevelL:previous.oilLevelL,
-    coolantTemperatureC,coolantPressureBar,coolantFlowLPerMin,coolantLevelL:previous.coolantLevelL,headTemperatureC,
+    oilTemperatureC,oilPressureBar,oilFlowLPerMin,oilLevelL,
+    coolantTemperatureC,coolantPressureBar,coolantFlowLPerMin,coolantLevelL,headTemperatureC,
     exhaustTemperatureC,thermostatOpening,radiatorHeatRejectionW,bearingFilmRatio,
     lubricationWarning,overheating:coolantTemperatureC>=112||headTemperatureC>=220
   };
