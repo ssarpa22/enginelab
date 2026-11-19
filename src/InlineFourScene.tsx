@@ -145,7 +145,7 @@ export default function InlineFourScene(props:Props) {
   s.parts.forEach((c,i)=>{
    const z=(i-1.5)*spacing,local=crankRad+mech[i]!,cycle=props.angle+offsets[i]!,v=calculateValveState(cycle),telemetry=props.cylinderStates[i]!;
    const k=calculateSliderCrankState(props.geometry,local,0),dy=k.pistonDisplacementM/props.geometry.strokeM*stroke,pistonY=deck-dy-.12;
-   c.piston.position.set(0,pistonY,z);between(c.rod,V(0,pistonY,z),V(cr*Math.sin(local),crankY+cr*Math.cos(local),z));c.throw.rotation.z=-mech[i];
+   c.piston.position.set(0,pistonY,z);between(c.rod,V(0,pistonY,z),V(cr*Math.sin(local),crankY+cr*Math.cos(local),z));c.throw.rotation.z=-mech[i]!;
    c.intake.forEach(x=>{x.position.y=headY+.04-v.intakeLiftMm*.035;});
    c.exhaust.forEach(x=>{x.position.y=headY+.04-v.exhaustLiftMm*.035;});
    c.spark.visible=v.sparkActive||(props.sparkFlash&&i===0);
