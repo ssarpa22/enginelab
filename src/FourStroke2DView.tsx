@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { calculateValveState } from "../packages/simulation-core/src/mechanics/valve-timing";
@@ -56,18 +56,16 @@ export default function FourStroke2DView({geometry}:Props){
   const chamberTop=84,chamberHeight=Math.max(0,pistonTop-chamberTop);
   const pressureBar=phase==="Power"?Math.max(8,18*Math.sin(Math.PI*clamp((cycle-360)/180,0,1))):phase==="Compression"?1+5*clamp((cycle-180)/180,0,1):phase==="Exhaust"?1.08:0.92;
   const tempC=phase==="Power"?Math.round(520+780*Math.sin(Math.PI*clamp((cycle-360)/180,0,1))):phase==="Compression"?Math.round(90+230*clamp((cycle-180)/180,0,1)):phase==="Exhaust"?480:65;
-  const intakeStrength=valve.intakeOpen?.8:0;
-  const exhaustStrength=valve.exhaustOpen?.8:0;
+  const intakeStrength=valve.intakeOpen ? 0.8 : 0;
+  const exhaustStrength=valve.exhaustOpen ? 0.8 : 0;
   const gasFill=phase==="Intake"?"url(#gasFresh)":phase==="Compression"?"url(#gasCompressed)":phase==="Power"?"url(#gasBurned)":"url(#gasSpent)";
   const spark=cycle>=342&&cycle<=348;
   const intakeFlow=valve.intakeOpen?.024:0;
   const exhaustFlow=valve.exhaustOpen?.021:0;
   const speedLabel=speed<.3?"MUY LENTA":speed<.7?"LENTA":"NORMAL";
-  const phaseProgress=cycle%180/180;
   const camAngle=cycle*Math.PI/360;
   const intakeCamRotation=-18+valve.intakeLiftMm*2.1;
   const exhaustCamRotation=18-valve.exhaustLiftMm*2.1;
-  const rpm=useMemo(()=>Math.round(speed*30),[speed]);
   return <section className="four-stroke-2d" aria-label="Corte bidimensional independiente del ciclo de cuatro tiempos">
     <div className="four-stroke-2d-toolbar"><div><span className="view-live-dot"/><span>SECCIÓN LONGITUDINAL · CICLO DIDÁCTICO INDEPENDIENTE</span></div><span className="view-angle">{fmt(cycle,0)}° / 720°</span></div>
     <div className="two-d-controls">
@@ -114,14 +112,14 @@ export default function FourStroke2DView({geometry}:Props){
         <g className="section-cam-assembly" transform={`rotate(${exhaustCamRotation+Math.sin(camAngle+Math.PI)*8} ${cx+42} 18)`}>
           <circle cx={cx+42} cy="18" r="12" className="section-cam-base"/><ellipse cx={cx+42} cy="7" rx="8" ry="15" className="section-cam-lobe"/>
         </g>
-        <rect x={cx-53} y={53-intakeLift} width="22" height="9" rx="2" className="section-follower"/>
-        <rect x={cx+31} y={53-exhaustLift} width="22" height="9" rx="2" className="section-follower"/>
-        <path d={`M${cx-42} 30 V${intakeValveY}`} className="section-valve-stem intake"/>
+        <rect x={cx-53} y={25+intakeLift} width="22" height="9" rx="2" className="section-follower"/>
+        <rect x={cx+31} y={25+exhaustLift} width="22" height="9" rx="2" className="section-follower"/>
+        <path d={`M${cx-42} ${30+intakeLift} V${intakeValveY}`} className="section-valve-stem intake"/>
         <path d={`M${cx-57} ${intakeValveY} Q${cx-42} ${intakeValveY+7} ${cx-27} ${intakeValveY}`} className="section-valve-head intake"/>
-        <path d={`M${cx+42} 30 V${exhaustValveY}`} className="section-valve-stem exhaust"/>
+        <path d={`M${cx+42} ${30+exhaustLift} V${exhaustValveY}`} className="section-valve-stem exhaust"/>
         <path d={`M${cx+27} ${exhaustValveY} Q${cx+42} ${exhaustValveY+7} ${cx+57} ${exhaustValveY}`} className="section-valve-head exhaust"/>
-        <path d={`M${cx-42} 27 C${cx-63} 27 ${cx-63} 36 ${cx-42} 39 S${cx-21} 51 ${cx-42} ${61+intakeLift} S${cx-63} ${70+intakeLift} ${cx-42} ${73+intakeLift}`} className="section-valve-spring"/>
-        <path d={`M${cx+42} 27 C${cx+21} 27 ${cx+21} 36 ${cx+42} 39 S${cx+63} 51 ${cx+42} ${61+exhaustLift} S${cx+63} ${70+exhaustLift} ${cx+42} ${73+exhaustLift}`} className="section-valve-spring"/>
+        <path d={`M${cx-42} ${37+intakeLift} C${cx-63} ${37+intakeLift} ${cx-63} ${47+intakeLift} ${cx-42} ${49+intakeLift} S${cx-21} 64 ${cx-42} 66 S${cx-63} 74 ${cx-42} 76`} className="section-valve-spring"/>
+        <path d={`M${cx+42} ${37+exhaustLift} C${cx+21} ${37+exhaustLift} ${cx+21} ${47+exhaustLift} ${cx+42} ${49+exhaustLift} S${cx+63} 64 ${cx+42} 66 S${cx+63} 74 ${cx+42} 76`} className="section-valve-spring"/>
         {spark&&<g className="section-spark"><path d={`M${cx} 69 l-9 13 8-2-4 13 14-17-9 2 5-9z`}/><circle cx={cx} cy="80" r="17"/></g>}
       </g>
       <g clipPath="url(#cylinderChamber)">
