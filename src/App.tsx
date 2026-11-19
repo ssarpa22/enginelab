@@ -3,7 +3,7 @@ import { createEngineGeometry, type EngineGeometry } from "../packages/simulatio
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { millimetresToMetres, metresToMillimetres } from "../packages/simulation-core/src/units";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
-import { calculateCylinderThermodynamics, DEFAULT_THERMODYNAMICS } from "../packages/simulation-core/src/mechanics/cylinder-thermodynamics";
+import { calculateCylinderThermodynamics } from "../packages/simulation-core/src/mechanics/cylinder-thermodynamics";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, rpm: 1800 };
