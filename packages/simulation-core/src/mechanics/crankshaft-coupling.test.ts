@@ -90,7 +90,7 @@ describe("pressure-coupled inline-four crankshaft", () => {
   });
 
   it("hard-limits the crankshaft even when a caller requests an unsafe target", () => {
-    const next = stepCrankshaft({ cycleAngleDeg: 0, rpm: 99 }, 220, {
+    const next = stepCrankshaft({ cycleAngleDeg: 0, rpm: MAX_CRANKSHAFT_RPM - 1 }, 220, {
       targetRpm: 8_000,
       dtSeconds: 0.01,
       loadTorqueNm: 0,
