@@ -101,3 +101,77 @@
 @media(max-width:620px){.gas-flow-card{padding:10px}.gas-flow-readouts{grid-template-columns:1fr 1fr}.gas-flow-diagram{min-height:120px}.gas-hardware text,.gas-caption{font-size:9px}}
 
 @media(prefers-reduced-motion:reduce){.gas-intake-stream,.gas-exhaust-stream,.gas-exhaust-particle,.gas-outlet-plume{animation:none!important}}
+
+/* Unified 2D / 3D engine viewport. */
+.engine-view-header{align-items:center}
+.engine-view-stage{padding:10px 14px 14px}
+.engine-view-stage.is-2d-view{background:#11191b;background-image:radial-gradient(#344144 .55px,transparent .55px);background-size:18px 18px}
+.engine-view-stage .engine-3d-host{border-radius:4px}
+.scene-view-switch button{min-width:116px}
+.four-stroke-2d{width:100%;min-width:0;color:#dbe5e1}
+.four-stroke-2d-toolbar{display:flex;align-items:center;justify-content:space-between;padding:8px 11px;border:1px solid #354446;border-bottom:0;border-radius:5px 5px 0 0;background:#182326;color:#91a5a0;font:9px var(--mono);letter-spacing:.09em}
+.four-stroke-2d-toolbar>div{display:flex;align-items:center;gap:8px}
+.view-live-dot{width:6px;height:6px;border-radius:50%;background:#75c9aa;box-shadow:0 0 10px #75c9aa88}
+.view-angle{color:#e9b36d;font-variant-numeric:tabular-nums}
+.four-stroke-2d-svg{display:block;width:100%;height:auto;max-height:560px;border:1px solid #354446;background:radial-gradient(ellipse at 50% 42%,#202d30 0%,#11191b 72%);border-radius:0 0 5px 5px}
+.section-grid line{stroke:#516164;stroke-width:.7;opacity:.24}
+.section-hardware{filter:drop-shadow(0 8px 12px #0005)}
+.section-ports path{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.section-intake-port{stroke:#4a9d8c;stroke-width:22;opacity:.48}
+.section-exhaust-port{stroke:#bd7944;stroke-width:22;opacity:.48}
+.section-port-glass{stroke:#b7d4cd;stroke-width:2.5;opacity:.45}
+.section-intake-flow,.section-exhaust-flow{stroke-width:4;stroke-dasharray:7 12;animation:sectionFlow 1s linear infinite}
+.section-intake-flow{stroke:#83e4c8}
+.section-exhaust-flow{stroke:#f0a45f}
+.section-intake-particle{fill:#a0f1dc;filter:drop-shadow(0 0 4px #64d7b5);animation:sectionParticle 1.7s linear infinite}
+.section-exhaust-particle{fill:#ffc17e;filter:drop-shadow(0 0 4px #e98e4b);animation:sectionParticle 1.35s linear infinite}
+.section-valve-stem{stroke:#c7d2cf;stroke-width:7;stroke-linecap:round}
+.section-valve-stem.intake,.section-valve-head.intake{stroke:#68cbb1}
+.section-valve-stem.exhaust,.section-valve-head.exhaust{stroke:#e5a05c}
+.section-valve-stem.open{filter:drop-shadow(0 0 5px currentColor)}
+.section-valve-head{fill:none;stroke-width:8;stroke-linecap:round}
+.section-valve-spring{fill:none;stroke:#aebbb8;stroke-width:3;opacity:.85}
+.section-cam-lobes{fill:#77878a;stroke:#c3cfcb;stroke-width:2}
+.section-spark-plug{fill:#d8ded7;stroke:#738184;stroke-width:2}
+.section-spark path{fill:#ffe39a;stroke:#fff1c2;stroke-width:1.5;filter:drop-shadow(0 0 8px #ffc95e)}
+.section-spark circle{fill:none;stroke:#ffdb7a;stroke-width:1.5;opacity:.7}
+.section-chamber-flow{fill:none;stroke:#9cebd4;stroke-width:3;stroke-linecap:round;stroke-dasharray:4 7;animation:sectionFlow .7s linear infinite}
+.section-chamber-flow.exhaust{stroke:#eeb078}
+.section-piston-rings{fill:none;stroke:#364247;stroke-width:3}
+.section-wrist-pin{fill:#29373b;stroke:#e0e8e4;stroke-width:4}
+.section-connecting-rod{fill:url(#sectionPiston);stroke:#c7d2ce;stroke-width:2;filter:drop-shadow(0 3px 3px #0008)}
+.section-crank-web{fill:#526268;stroke:#a9b6b5;stroke-width:3}
+.section-main-bearing{fill:#1b2629;stroke:#aebbb8;stroke-width:5}
+.section-crank-pin{fill:#a5b2b1;stroke:#e3e9e5;stroke-width:3}
+.section-crank-pin-center{fill:#253135;stroke:#536467;stroke-width:2}
+.section-sump{fill:#202c30;stroke:#69797d;stroke-width:2}
+.section-label{fill:#bdc9c4;font:10px var(--mono);letter-spacing:.09em}
+.section-label.intake{fill:#78d9bd}.section-label.exhaust{fill:#eab071}
+.section-micro{fill:#82938f;font:8px var(--mono);letter-spacing:.055em}
+.four-stroke-readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:9px}
+.four-stroke-readouts>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:9px 10px;border:1px solid #344244;background:#141d1f;border-radius:4px}
+.four-stroke-readouts span{color:#849692;font:8px var(--mono);letter-spacing:.06em}
+.four-stroke-readouts strong{color:#e3ece7;font:600 16px var(--display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.four-stroke-readouts small{color:#9eaeaa;font:9px var(--mono)}
+.four-stroke-phase-note{display:flex;align-items:flex-start;gap:10px;margin-top:9px;padding:11px 12px;border:1px solid #344244;background:#182326;border-radius:4px}
+.phase-indicator{width:8px;height:8px;margin-top:3px;flex:none;border-radius:50%;background:#74d4ba;box-shadow:0 0 10px currentColor}
+.phase-compression{background:#75b8d6}.phase-power{background:#efa15c}.phase-exhaust{background:#b9a18a}
+.four-stroke-phase-note>div{flex:1;min-width:0}
+.four-stroke-phase-note strong{color:#e2ebe6;font:600 11px var(--mono);letter-spacing:.06em}
+.four-stroke-phase-note p{margin:4px 0 0;color:#99a8a4;font-size:10px;line-height:1.5}
+.four-stroke-status{color:#a2b7af;font:8px var(--mono);letter-spacing:.08em;white-space:nowrap}
+@keyframes sectionFlow{to{stroke-dashoffset:-38}}
+@keyframes sectionParticle{0%{opacity:.2;transform:translateX(0)}20%{opacity:1}100%{opacity:.2;transform:translateX(24px)}}
+@media(max-width:620px){
+ .engine-view-stage{padding:7px}
+ .engine-view-header{align-items:flex-start;flex-direction:column}
+ .scene-view-switch{width:100%;justify-content:stretch}
+ .scene-view-switch button{flex:1;min-width:0}
+ .four-stroke-2d-toolbar{font-size:8px}
+ .four-stroke-readouts{grid-template-columns:1fr 1fr;gap:5px}
+ .four-stroke-readouts>div{padding:7px}
+ .four-stroke-readouts strong{font-size:14px}
+ .four-stroke-phase-note{gap:7px;padding:9px}
+ .four-stroke-phase-note p{font-size:9px}
+ .four-stroke-status{font-size:7px}
+}
