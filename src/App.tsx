@@ -106,10 +106,8 @@ function Mechanism({ geometry, angle, sparkFlash }: { geometry: EngineGeometry; 
 function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
   const [cycleAngle,setCycleAngle]=useState(0);
-  const cycleAngleRef=useRef(0);
   const [shaftRpm,setShaftRpm]=useState(INITIAL.rpm);
   const crankshaftRef=useRef<CrankshaftDynamicState>({cycleAngleDeg:0,rpm:INITIAL.rpm});
-  const gasPressuresRef=useRef<number[]>([101325,101325,101325,101325]);
   const gasTorqueRef=useRef(0);
   const [running,setRunning]=useState(true);
   const [assetView,setAssetView]=useState<"simulation"|"cutaway"|"piston">("simulation");
@@ -119,8 +117,6 @@ function App() {
   const systemsRef=useRef<EngineSystemsState>({...INITIAL_ENGINE_SYSTEMS});
   const [damage,setDamage]=useState<EngineDamageState>(INITIAL_ENGINE_DAMAGE);
   const damageRef=useRef<EngineDamageState>({...INITIAL_ENGINE_DAMAGE});
-  // RPM is the kinematic setpoint; damage reduces delivered torque/power, not crank speed.
-  // A seized engine is the only failure state that forcibly stops crank motion.
   const effectiveRpm=damage.seized?0:shaftRpm;
   const frictionTorquePerCylinder=damage.frictionTorqueNm/4;
   const frictionPowerPerCylinder=frictionTorquePerCylinder*effectiveRpm*TAU/60;
@@ -142,7 +138,6 @@ function App() {
       heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)
     };
   }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
-  gasPressuresRef.current=cylinderStates.map(state=>state.pressurePa);
   const crankCoupling=useMemo(()=>calculateInlineFourCrankCoupling(geometry,cycleAngle%360,effectiveRpm,cylinderStates.map(state=>state.pressurePa)),[geometry,cycleAngle,effectiveRpm,cylinderStates]);
   gasTorqueRef.current=crankCoupling.indicatedGasTorqueNm;
   const thermodynamics = cylinderStates[0]!;
@@ -199,7 +194,6 @@ function App() {
         const advance=nextSimulation.damage.seized?0:((nextCrankshaft.cycleAngleDeg-from+720)%720);
         if(advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95);}
         const next=nextCrankshaft.cycleAngleDeg;
-        cycleAngleRef.current=next;
         if(time-lastUiPaint>=33){setCycleAngle(next);setShaftRpm(nextCrankshaft.rpm);lastUiPaint=time;}
       }
       previous=time;
@@ -208,7 +202,7 @@ function App() {
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
   },[running,setup.rpm,visualRate]);
-  const reset=()=>{setSetup(INITIAL);cycleAngleRef.current=0;crankshaftRef.current={cycleAngleDeg:0,rpm:INITIAL.rpm};setCycleAngle(0);setShaftRpm(INITIAL.rpm);setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
+  const reset=()=>{setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:INITIAL.rpm};setCycleAngle(0);setShaftRpm(INITIAL.rpm);setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
     Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
