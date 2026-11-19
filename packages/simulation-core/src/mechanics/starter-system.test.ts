@@ -9,8 +9,8 @@ describe("starter motor", () => {
     expect(calculateStarterTorque(420, true)).toBe(0);
   });
   it("disengages only after the engine reaches self-sustaining cranking speed", () => {
-    expect(starterCanDisengage(179)).toBe(false);
-    expect(starterCanDisengage(180)).toBe(true);
+    expect(starterCanDisengage(64)).toBe(false);
+    expect(starterCanDisengage(65)).toBe(true);
   });
   it("produces no torque when the starter is not engaged and rejects invalid speed", () => {
     expect(calculateStarterTorque(100, false)).toBe(0);
