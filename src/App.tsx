@@ -137,7 +137,7 @@ function App() {
       indicatedPowerW:Math.max(0,state.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
       heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)*(setup.rpm===0?0:1)
     };
-  }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
+  }), [geometry, cycleAngle, effectiveRpm, setup.rpm, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
   const crankCoupling=useMemo(()=>calculateInlineFourCrankCoupling(geometry,cycleAngle%360,effectiveRpm,cylinderStates.map(state=>state.pressurePa)),[geometry,cycleAngle,effectiveRpm,cylinderStates]);
   gasTorqueRef.current=crankCoupling.indicatedGasTorqueNm;
   const thermodynamics = cylinderStates[0]!;
