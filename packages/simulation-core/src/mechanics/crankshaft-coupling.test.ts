@@ -26,6 +26,12 @@ describe("pressure-coupled inline-four crankshaft", () => {
     expect(state.camshaftAngleDeg).toBeCloseTo(135, 12);
   });
 
+  it("keeps camshaft phase continuous across the second crank revolution", () => {
+    const state = calculateInlineFourCrankCoupling(geometry, 180, 1_800, [101_325, 101_325, 101_325, 101_325], 101_325, 540);
+    expect(state.camshaftAngleDeg).toBeCloseTo(270, 12);
+    expect(state.cylinders[0]!.cycleAngleDeg).toBeCloseTo(540, 12);
+  });
+
   it("converts pressure force through the slider-crank Jacobian into crank torque", () => {
     const low = calculateInlineFourCrankCoupling(geometry, 90, 1_800, [101_325, 101_325, 101_325, 101_325]);
     const high = calculateInlineFourCrankCoupling(geometry, 90, 1_800, [2_000_000, 101_325, 101_325, 101_325]);
