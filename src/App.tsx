@@ -90,7 +90,7 @@ function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
   const [cycleAngle,setCycleAngle]=useState(0);
   const [running,setRunning]=useState(true);
-  const [visualRate,setVisualRate]=useState(0.2);
+  const [visualRate,setVisualRate]=useState(0.5);
   const geometry=useMemo(()=>geometryFor(setup),[setup]);
   const crankAngle=(cycleAngle%360)*Math.PI/180;
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
@@ -109,8 +109,8 @@ function App() {
     const tick=(time:number)=>{
       if(previous!==0){
         const dt=Math.min((time-previous)/1000,.05);
-        // Deliberately slow the visual playback; RPM remains the engine's physical input.
-        setCycleAngle(value=>(value+dt*setup.rpm*6*visualRate)%720);
+        // Visual playback is intentionally independent from real RPM, so the cycle stays readable.
+        setCycleAngle(value=>(value+dt*90*visualRate)%720);
       }
       previous=time;
       frame=requestAnimationFrame(tick);
@@ -118,7 +118,7 @@ function App() {
     frame=requestAnimationFrame(tick);
     return ()=>cancelAnimationFrame(frame);
   },[running,setup.rpm,visualRate]);
-  const reset=()=>{setSetup(INITIAL);setCycleAngle(0);setVisualRate(.2);setRunning(true);};
+  const reset=()=>{setSetup(INITIAL);setCycleAngle(0);setVisualRate(.5);setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La válvula de admisión abre y entra la mezcla aire-combustible.",
     Compression:"Las dos válvulas cierran; el pistón comprime la mezcla.",
@@ -148,7 +148,7 @@ function App() {
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div>
-          <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD VISUAL</label><select id="playback-speed" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}><option value="0.08">Muy lenta</option><option value="0.12">Lenta</option><option value="0.2">Normal</option><option value="0.3">Rápida</option></select></div>
+          <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD VISUAL</label><select id="playback-speed" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}><option value="0.25">Muy lenta</option><option value="0.5">Lenta</option><option value="1">Normal</option></select></div>
         </div>
         <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{setRunning(false);setCycleAngle(Number(e.target.value));}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
         <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p></div></div>
