@@ -125,7 +125,7 @@ export function stepCrankshaft(
     loadTorqueNm = 8,
     frictionTorqueNm = 2,
     inertiaKgM2 = 0.32,
-    governorGainNmPerRpm = 0.12,
+    governorGainNmPerRpm = 0.8,
     maximumGasTorqueNm = 220
   } = options;
 
@@ -140,7 +140,7 @@ export function stepCrankshaft(
   // A zero speed target represents fuel cut: the rotating assembly coasts down under load and friction.
   const gasTorque = targetRpm === 0 ? 0 : clamp(indicatedGasTorqueNm, -maximumGasTorqueNm, maximumGasTorqueNm);
   const governorTorque = targetRpm > 0
-    ? clamp((targetRpm - state.rpm) * governorGainNmPerRpm, -100, 100)
+    ? clamp((targetRpm - state.rpm) * governorGainNmPerRpm, -240, 240)
     : 0;
   const friction = state.rpm > 0 ? frictionTorqueNm : 0;
   const netTorqueNm = gasTorque + governorTorque - loadTorqueNm - friction;
