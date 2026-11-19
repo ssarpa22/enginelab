@@ -197,7 +197,7 @@ function App() {
               sparkTimer=window.setTimeout(()=>setSparkFlash(false),Math.min(95/visualRate,9_500));
             }
             if(activeEngineMode==="cranking"&&starterCanDisengage(nextCrankshaft.rpm))activeEngineMode="running";
-            if(activeEngineMode==="running"&&nextCrankshaft.rpm<8&&targetRpm===0)activeEngineMode="off";
+            if(activeEngineMode==="running"&&nextCrankshaft.rpm<8)activeEngineMode="off";
             remaining-=substepSeconds;
           }
         }
