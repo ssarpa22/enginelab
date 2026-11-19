@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
+import { DEFAULT_VALVE_TIMING } from "./valve-timing";
 import {
   advanceEngineSystems,
   calculateCylinderMechanics,
@@ -31,6 +32,18 @@ describe("constrained inline-four mechanics",()=>{
       expect(s.intakeLiftActualMm).toBeLessThanOrEqual(s.intakeLiftCommandMm+1e-8);
       expect(s.exhaustLiftActualMm).toBeLessThanOrEqual(s.exhaustLiftCommandMm+1e-8);
     }
+  });
+
+  it("clips an aggressive cam profile before the valve head intersects the piston",()=>{
+    const highCompression=createEngineGeometry({
+      cylinderCount:4,boreM:.086,strokeM:.086,connectingRodLengthM:.143,
+      compressionRatio:15,bankAngleRad:Math.PI/2
+    });
+    const unsafeTiming={...DEFAULT_VALVE_TIMING,intakeOpensBtdc:10,intakeClosesAbdc:-170,intakeMaxLiftMm:20};
+    const state=calculateCylinderMechanics(highCompression,0,0,0,2500,unsafeTiming);
+    expect(state.valveCollision).toBe(true);
+    expect(state.intakeLiftActualMm).toBeLessThan(state.intakeLiftCommandMm);
+    expect(state.minimumValveClearanceMm).toBeGreaterThanOrEqual(1-1e-8);
   });
 
   it("raises oil pressure and pump flow with engine speed, within relief limits",()=>{
