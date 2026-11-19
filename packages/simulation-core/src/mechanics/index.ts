@@ -18,3 +18,6 @@ export type { CylinderMechanicalState, EngineSystemsState, EngineSystemsInput } 
 
 export { advanceEngineDamage, engineDamageSummary, INITIAL_ENGINE_DAMAGE } from "./engine-damage";
 export type { EngineDamageState, EngineDamageInput } from "./engine-damage";
+
+export { calculateInlineFourCrankCoupling, stepCrankshaft } from "./crankshaft-coupling";
+export type { InlineFourCrankCoupling, CylinderCrankCoupling, CrankshaftDynamicState, CrankshaftStepOptions } from "./crankshaft-coupling";
