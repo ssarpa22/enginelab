@@ -9,12 +9,29 @@ describe("four-stroke valve timing", () => {
       const camshaftAngle = crankCycleAngle / 2;
       const followerCycle = calculateCamFollowerCycleAngleDeg(camshaftAngle, camCenter, cylinderOffset);
       expect(followerCycle).toBeCloseTo((crankCycleAngle + cylinderOffset) % 720, 10);
-      const followerLocalAngle = 90 + camshaftAngle - camCenter / 2;
+      const followerLocalAngle = 270 + camshaftAngle - camCenter / 2;
       expect(calculateCamLobeProfileCycleAngleDeg(followerLocalAngle, camCenter, cylinderOffset))
         .toBeCloseTo((crankCycleAngle + cylinderOffset) % 720, 10);
     }
   });
 
+
+  it("samples the physical underside of each cam lobe at the bucket follower", () => {
+    const camCenter = 350;
+    const cylinderOffset = 180;
+    for (const crankCycleAngle of [0, 120, 350, 540, 719]) {
+      const camshaftAngle = crankCycleAngle / 2;
+      const undersideCycle = calculateCamLobeProfileCycleAngleDeg(
+        270 + camshaftAngle - camCenter / 2,
+        camCenter,
+        cylinderOffset
+      );
+      const expectedCycle = (crankCycleAngle + cylinderOffset) % 720;
+      expect(undersideCycle).toBeCloseTo(expectedCycle, 10);
+      expect(calculateValveState(undersideCycle).intakeLiftMm)
+        .toBeCloseTo(calculateValveState(expectedCycle).intakeLiftMm, 10);
+    }
+  });
 
   it("opens the intake valve before TDC and keeps it open into compression", () => {
     expect(calculateValveState(715).intakeOpen).toBe(true);
