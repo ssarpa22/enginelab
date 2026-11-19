@@ -27,6 +27,40 @@ export const DEFAULT_VALVE_TIMING: ValveTiming = {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const wrapCycle = (angle: number) => ((angle % 720) + 720) % 720;
+
+/**
+ * Maps a point on the cam profile to its four-stroke crank-cycle angle.
+ * The lobe nose is at local profile angle 90° when its valve event is centred.
+ */
+export function calculateCamLobeProfileCycleAngleDeg(
+  profileAngleDeg: number,
+  camCenterCycleDeg: number,
+  cylinderOffsetDeg = 0
+): number {
+  if (![profileAngleDeg, camCenterCycleDeg, cylinderOffsetDeg].every(Number.isFinite)) {
+    throw new RangeError("Cam profile angles must be finite.");
+  }
+  return wrapCycle(camCenterCycleDeg + 2 * (profileAngleDeg - 90) + cylinderOffsetDeg);
+}
+
+/**
+ * Resolves the cycle angle currently touching the fixed top-side bucket follower.
+ * The cam is phased by -camshaftAngle + camCenter/2, so the follower samples
+ * the profile at 90° + camshaftAngle - camCenter/2. This must equal crank cycle
+ * angle + cylinder offset when the camshaft is driven at half crank speed.
+ */
+export function calculateCamFollowerCycleAngleDeg(
+  camshaftAngleDeg: number,
+  camCenterCycleDeg: number,
+  cylinderOffsetDeg = 0
+): number {
+  if (![camshaftAngleDeg, camCenterCycleDeg, cylinderOffsetDeg].every(Number.isFinite)) {
+    throw new RangeError("Camshaft angles must be finite.");
+  }
+  const localFollowerAngle = 90 + camshaftAngleDeg - camCenterCycleDeg / 2;
+  return calculateCamLobeProfileCycleAngleDeg(localFollowerAngle, camCenterCycleDeg, cylinderOffsetDeg);
+}
 const smoothLift = (progress: number, maxLift: number) => maxLift * Math.sin(Math.PI * clamp(progress, 0, 1));
 
 function windowProgress(angle: number, start: number, end: number): number | null {
