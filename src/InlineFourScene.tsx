@@ -23,7 +23,7 @@ export default function InlineFourScene(props:Props){
   const scene=new THREE.Scene();scene.background=new THREE.Color(0x101719);scene.fog=new THREE.Fog(0x101719,18,38);
   const scale=2.2/props.geometry.strokeM,stroke=props.geometry.strokeM*scale,r=props.geometry.crankRadiusM*scale,rodLength=props.geometry.connectingRodLengthM*scale;
   const bore=props.geometry.boreM*scale,clearance=props.geometry.clearanceVolumePerCylinderM3/(Math.PI*props.geometry.boreM**2/4)*scale;
-  const pistonTopOffset=.32,deck=rodLength+r+pistonTopOffset+clearance,crankY=0,spacing=Math.max(bore*1.3,bore+.72),length=spacing*3+bore*1.15,width=Math.max(bore*1.55,(2*r+bore*.2+.012*scale)*1.1);
+  const pistonTopOffset=.32,deck=rodLength+r+pistonTopOffset+clearance,crankY=0,spacing=Math.max(bore*1.18,bore+.18),length=spacing*3+bore*1.15,width=Math.max(bore*1.55,(2*r+bore*.2+.012*scale)*1.1);
   const zAt=(i:number)=>(i-1.5)*spacing;
   const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(width*2.8,deck*.95,length*.9);
   let renderer:THREE.WebGLRenderer;
@@ -43,7 +43,11 @@ export default function InlineFourScene(props:Props){
   const sideWall=new THREE.Mesh(new THREE.BoxGeometry(.22,blockHeight,length),dark);sideWall.position.set(-width/2,blockCenter,0);sideWall.castShadow=true;sideWall.receiveShadow=true;scene.add(sideWall);
   const rearWall=new THREE.Mesh(new THREE.BoxGeometry(width,blockHeight,.2),dark);rearWall.position.set(0,blockCenter,-length/2);rearWall.castShadow=true;scene.add(rearWall);
   const frontRails=[-.42,.42].map(x=>{const rail=new THREE.Mesh(new THREE.BoxGeometry(width*.48,blockHeight*.88,.18),dark);rail.position.set(x,blockCenter,length/2);scene.add(rail);return rail;});
-  const deckPlate=new THREE.Mesh(new THREE.BoxGeometry(width, .18,length),aluminium);deckPlate.position.set(0,deck-.05,0);deckPlate.castShadow=true;scene.add(deckPlate);
+  // Open deck cutaway: two structural rails leave the four bores visible.
+  for(const x of [-1,1]){
+   const rail=new THREE.Mesh(new THREE.BoxGeometry(.22,.16,length),aluminium);
+   rail.position.set(x*width*.43,deck-.05,0);rail.castShadow=true;rail.receiveShadow=true;scene.add(rail);
+  }
   // Machined liners and water jackets, sized from the actual bore/stroke.
   for(let i=0;i<4;i++){
    const z=zAt(i),liner=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5,bore*.5,stroke+.52,56,1,true),new THREE.MeshStandardMaterial({color:0x9ba8aa,metalness:.92,roughness:.2,side:THREE.DoubleSide}));liner.position.set(0,deck-stroke/2-.18,z);liner.castShadow=true;scene.add(liner);
@@ -51,11 +55,20 @@ export default function InlineFourScene(props:Props){
    const fireRing=new THREE.Mesh(new THREE.TorusGeometry(bore*.51,.035,10,56),steel);fireRing.rotation.x=Math.PI/2;fireRing.position.set(0,deck+.015,z);scene.add(fireRing);
    for(const x of [-1,1]){const bolt=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.18,12),steel);bolt.position.set(x*width*.39,deck+.07,z);scene.add(bolt);}
   }
-  // Cylinder head, gasket seam, cam carrier and removable cam cover.
-  const head=new THREE.Mesh(new THREE.BoxGeometry(width*1.04,.56,length*1.04),aluminium);head.position.set(0,deck+.28,0);head.castShadow=true;scene.add(head);
-  const gasket=new THREE.Mesh(new THREE.BoxGeometry(width*1.02,.045,length*1.02),mat(0x373e3f,.8,.12));gasket.position.set(0,deck+.025,0);scene.add(gasket);
-  const carrier=new THREE.Mesh(new THREE.BoxGeometry(width*.9,.22,length*.98),dark);carrier.position.set(0,deck+.68,0);scene.add(carrier);
-  const cover=new THREE.Mesh(new THREE.BoxGeometry(width*.83,.24,length*.94),black);cover.position.set(0,deck+1.05,0);cover.castShadow=true;scene.add(cover);
+  // Open cylinder-head cutaway: deck gasket rails, head casting rails and exposed DOHC gear.
+  const gasketMaterial=mat(0x373e3f,.8,.12);
+  for(const x of [-1,1]){
+   const gasketRail=new THREE.Mesh(new THREE.BoxGeometry(.20,.035,length*.98),gasketMaterial);
+   gasketRail.position.set(x*width*.43,deck+.015,0);scene.add(gasketRail);
+   const headRail=new THREE.Mesh(new THREE.BoxGeometry(.28,.48,length*.98),aluminium);
+   headRail.position.set(x*width*.43,deck+.27,0);headRail.castShadow=true;scene.add(headRail);
+   const camCoverLip=new THREE.Mesh(new THREE.BoxGeometry(.34,.12,length*.92),black);
+   camCoverLip.position.set(x*width*.28,deck+.94,0);camCoverLip.castShadow=true;scene.add(camCoverLip);
+  }
+  for(const z of [-1,1]){
+   const bridge=new THREE.Mesh(new THREE.BoxGeometry(width*.86,.42,.18),aluminium);
+   bridge.position.set(0,deck+.27,z*length*.48);bridge.castShadow=true;scene.add(bridge);
+  }
   // DOHC shafts, eccentric lobes, bucket followers and real compression travel in visible valve springs.
   const cams:THREE.Group[]=[];
   for(const x of [-bore*.28,bore*.28]){
