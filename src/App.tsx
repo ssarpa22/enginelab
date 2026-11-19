@@ -155,11 +155,11 @@ function App() {
   return <main className="app-shell">
     <header className="topbar">
       <a className="brand" href="#" aria-label="EngineLab home"><span className="brand-mark"><span/><span/><span/></span><span>ENGINE<span className="brand-light">LAB</span></span></a>
-      <div className="topbar-center"><span className="status-dot"/> SIMULADOR DE MOTOR <span className="version-tag">PREVIEW 02</span></div>
+      <div className="topbar-center"><span className="status-dot"/> SIMULADOR DE MOTOR <span className="version-tag">3D PHYSICS PREVIEW</span></div>
       <div className="topbar-right"><span className="live-indicator">{running?"EN MARCHA":"EN PAUSA"}</span><span className="topbar-divider"/> CICLO 4T</div>
     </header>
     <section className="intro">
-      <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor de <em>cuatro tiempos.</em></h1><p>Observá cómo trabajan el pistón, las válvulas y la bujía durante un ciclo completo.</p></div>
+      <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor de <em>cuatro tiempos.</em></h1><p>Explorá el interior del motor en 3D y seguí el intercambio de gases, la combustión y el movimiento del conjunto mecánico.</p></div>
       <button className="reset-button" onClick={reset} type="button"><span>↺</span> REINICIAR</button>
     </section>
     <section className="metric-strip" aria-label="Datos principales del motor">
