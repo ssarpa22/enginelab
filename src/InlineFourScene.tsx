@@ -15,7 +15,7 @@ const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMate
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;throw:THREE.Group;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];inGas:THREE.Mesh[];outGas:THREE.Mesh[];flame:THREE.Mesh;};
-type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Mesh[];oilPump:THREE.Group;};
+type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Group[];oilPump:THREE.Group;};
 
 export default function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
@@ -103,15 +103,27 @@ export default function InlineFourScene(props:Props){
   const throws:THREE.Group[]=[];
   for(let i=0;i<4;i++){
    const t=new THREE.Group();t.position.z=zAt(i);
-   for(const side of [-1,1]){const web=new THREE.Mesh(new RoundedBoxGeometry(.22,r*1.45,.18,4,.045),forged);web.position.set(0,r*.52,side*.23);t.add(web);}
+   for(const side of [-1,1]){
+     const web=new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0,-r*.78),new THREE.Vector2(.16,-r*.78),new THREE.Vector2(.24,-r*.55),new THREE.Vector2(.22,-r*.12),new THREE.Vector2(.16,r*.42),new THREE.Vector2(.11,r*.68),new THREE.Vector2(0,r*.68)],32),forged);
+     web.rotation.x=Math.PI/2;web.scale.set(.78,1,.42);web.position.set(0,r*.48,side*.23);t.add(web);
+    }
    const pin=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.52,24),bronze);pin.rotation.x=Math.PI/2;pin.position.y=r;t.add(pin);
    const counter=new THREE.Mesh(new RoundedBoxGeometry(.48,.56,.42,4,.12),dark);counter.position.set(0,-r*.7,0);t.add(counter);
    crank.add(t);throws.push(t);
   }
   scene.add(crank);
   // Front timing drive: toothed belt/pulleys are mechanically linked to crank and half-speed cams.
-  const timing=new THREE.Group(),timingPulleys:THREE.Mesh[]=[],pulleyPositions=[[0,crankY,.34],[-bore*.28,deck+.91,.42],[bore*.28,deck+.91,.42]] as [number,number,number][];
-  for(const [x,y,rad] of pulleyPositions){const pulley=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,.18,48),bronze);pulley.rotation.x=Math.PI/2;pulley.position.set(x,y,length/2+.18);timing.add(pulley);timingPulleys.push(pulley);}
+  const timing=new THREE.Group(),timingPulleys:THREE.Group[]=[],pulleyPositions=[[0,crankY,.34],[-bore*.28,deck+.91,.42],[bore*.28,deck+.91,.42]] as [number,number,number][];
+  for(const [x,y,rad] of pulleyPositions){
+    const pulley=new THREE.Group();pulley.position.set(x,y,length/2+.18);
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(rad*.72,rad*.72,.19,48),forged);hub.rotation.x=Math.PI/2;pulley.add(hub);
+    const face=new THREE.Mesh(new THREE.CylinderGeometry(rad*.48,rad*.48,.205,48),bronze);face.rotation.x=Math.PI/2;pulley.add(face);
+    for(let toothIndex=0;toothIndex<28;toothIndex++){
+     const a=toothIndex/28*Math.PI*2,tooth=new THREE.Mesh(new RoundedBoxGeometry(.055,.075,.15,3,.012),bronze);
+     tooth.position.set(Math.cos(a)*(rad+.018),Math.sin(a)*(rad+.018),0);tooth.rotation.z=a;pulley.add(tooth);
+    }
+    timing.add(pulley);timingPulleys.push(pulley);
+   }
   const belt=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([vec(-.34,crankY,length/2+.28),vec(-.5,deck*.35,length/2+.28),vec(-.55,deck+.91,length/2+.28),vec(.55,deck+.91,length/2+.28),vec(.5,deck*.35,length/2+.28),vec(.34,crankY,length/2+.28)]),96,.045,10,false),black);timing.add(belt);scene.add(timing);
   const parts:Part[]=[],intakeCurves:THREE.CatmullRomCurve3[]=[],exhaustCurves:THREE.CatmullRomCurve3[]=[];
   for(let i=0;i<4;i++){
@@ -122,13 +134,17 @@ export default function InlineFourScene(props:Props){
    const pin=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,bore*.78,24),bronze);pin.rotation.z=Math.PI/2;pin.position.y=-.04;piston.add(pin);
    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.24,40,1,true),aluminium);skirt.position.y=-.17;piston.add(skirt);
    scene.add(piston);
-   const rod=new THREE.Mesh(new THREE.CylinderGeometry(.072,.125,1,28),forged);rod.castShadow=true;scene.add(rod);
+   const rodProfile=new THREE.Shape();
+   rodProfile.moveTo(-.075,-.5);rodProfile.lineTo(.075,-.5);rodProfile.lineTo(.075,-.34);rodProfile.lineTo(.034,-.25);rodProfile.lineTo(.034,.25);rodProfile.lineTo(.075,.34);rodProfile.lineTo(.075,.5);rodProfile.lineTo(-.075,.5);rodProfile.lineTo(-.075,.34);rodProfile.lineTo(-.034,.25);rodProfile.lineTo(-.034,-.25);rodProfile.lineTo(-.075,-.34);rodProfile.closePath();
+   const rodGeometry=new THREE.ExtrudeGeometry(rodProfile,{depth:.055,steps:1,bevelEnabled:true,bevelSegments:3,bevelThickness:.008,bevelSize:.008});rodGeometry.translate(0,0,-.0275);
+   const rod=new THREE.Mesh(rodGeometry,forged);rod.castShadow=true;scene.add(rod);
    const rodBigEnd=new THREE.Mesh(new THREE.TorusGeometry(.17,.042,14,40),bronze);rodBigEnd.castShadow=true;scene.add(rodBigEnd);
    const rodSmallEnd=new THREE.Mesh(new THREE.TorusGeometry(.105,.032,14,36),bronze);rodSmallEnd.castShadow=true;scene.add(rodSmallEnd);
    const intake:THREE.Group[]=[],exhaust:THREE.Group[]=[],intakeSprings:THREE.Mesh[]=[],exhaustSprings:THREE.Mesh[]=[],followers:THREE.Mesh[]=[];
    const makeValve=(x:number,zz:number,color:number)=>{
-    const g=new THREE.Group(),stem=new THREE.Mesh(new THREE.CylinderGeometry(.027,.027,.58,14),steel);stem.position.y=-.12;g.add(stem);
-    const face=new THREE.Mesh(new THREE.CylinderGeometry(.105,.075,.055,24),mat(color,.22,.9));face.position.y=-.43;g.add(face);
+    const g=new THREE.Group(),stem=new THREE.Mesh(new THREE.CylinderGeometry(.027,.027,.58,20),steel);stem.position.y=-.12;g.add(stem);
+    const valveProfile=[new THREE.Vector2(0,-.49),new THREE.Vector2(.045,-.49),new THREE.Vector2(.075,-.465),new THREE.Vector2(.095,-.43),new THREE.Vector2(.105,-.405),new THREE.Vector2(.095,-.38),new THREE.Vector2(0,-.38)];
+    const face=new THREE.Mesh(new THREE.LatheGeometry(valveProfile,36),mat(color,.2,.94));g.add(face);
     const retainer=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.06,18),bronze);retainer.position.y=.22;g.add(retainer);
     g.position.set(x,deck+.45,zz);scene.add(g);return g;
    };
