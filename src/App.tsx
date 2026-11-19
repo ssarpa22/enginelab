@@ -6,8 +6,8 @@ import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulatio
 import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
 import EngineScene from "./EngineScene";
 
-type Setup = { boreMm: number; strokeMm: number; rodMm: number; rpm: number };
-const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, rpm: 1800 };
+type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
+const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: s.compressionRatio, rpm: 1800 };
 const TAU = Math.PI * 2;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const fmt = (n: number, digits = 1) => Number.isFinite(n) ? n.toFixed(digits) : "—";
@@ -187,11 +187,12 @@ function App() {
         <div className="control-group"><div className="control-label-row"><label htmlFor="bore">DIÁMETRO DEL CILINDRO</label><output>{setup.boreMm} mm</output></div><input id="bore" type="range" min="60" max="120" step="1" value={setup.boreMm} onChange={e=>update("boreMm",Number(e.target.value))}/><div className="range-ends"><span>60 mm</span><span>120 mm</span></div></div>
         <div className="control-group"><div className="control-label-row"><label htmlFor="stroke">CARRERA</label><output>{setup.strokeMm} mm</output></div><input id="stroke" type="range" min="50" max="120" step="1" value={setup.strokeMm} onChange={e=>update("strokeMm",Number(e.target.value))}/><div className="range-ends"><span>50 mm</span><span>120 mm</span></div></div>
         <div className="control-group"><div className="control-label-row"><label htmlFor="rod">LARGO DE BIELA</label><output>{setup.rodMm} mm</output></div><input id="rod" type="range" min={rodMin} max="220" step="1" value={setup.rodMm} onChange={e=>update("rodMm",Number(e.target.value))}/><div className="range-ends"><span>{rodMin} mm</span><span>220 mm</span></div></div>
+        <div className="control-group"><div className="control-label-row"><label htmlFor="compression">RELACIÓN DE COMPRESIÓN</label><output>{fmt(setup.compressionRatio,1)} : 1</output></div><input id="compression" type="range" min="7" max="15" step="0.1" value={setup.compressionRatio} onChange={e=>update("compressionRatio",Number(e.target.value))}/><div className="range-ends"><span>7 : 1</span><span>15 : 1</span></div></div>
         <div className="control-group rpm-control"><div className="control-label-row"><label htmlFor="rpm">RÉGIMEN DEL MOTOR</label><output>{setup.rpm.toLocaleString("es-AR")} RPM</output></div><input id="rpm" type="range" min="0" max="8000" step="50" value={setup.rpm} onChange={e=>update("rpm",Number(e.target.value))}/><div className="range-ends"><span>0 RPM</span><span>8.000 RPM</span></div></div>
         <div className="derived-box"><div className="derived-heading">DATOS MECÁNICOS <span>CALCULADOS</span></div>
           <div className="derived-row"><span>Radio del cigüeñal</span><strong>{fmt(metresToMillimetres(geometry.crankRadiusM),1)} mm</strong></div>
           <div className="derived-row"><span>Relación biela / manivela</span><strong>{fmt(geometry.rodToCrankRatio,2)} : 1</strong></div>
-          <div className="derived-row"><span>Relación de compresión</span><strong>10,5 : 1 <small>referencia</small></strong></div>
+          <div className="derived-row"><span>Relación de compresión</span><strong>{fmt(geometry.compressionRatio,1)} : 1</strong></div>
         </div>
       </aside>
     </div>
