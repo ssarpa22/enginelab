@@ -131,7 +131,7 @@ function App() {
     const state=calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, effectiveRpm);
     return {
       ...state,
-      pressurePa:state.pressurePa*(1-damage.misfireProbability*.65)*(setup.rpm===0?.65:1),
+      pressurePa:state.pressurePa*(1-damage.misfireProbability*.65)*(setup.rpm === 0 ? 0.65 : 1),
       burnedFraction:state.burnedFraction*(1-damage.misfireProbability)*(setup.rpm===0?0:1),
       indicatedTorqueNm:Math.max(0,state.indicatedTorqueNm*damage.powerFactor-frictionTorquePerCylinder),
       indicatedPowerW:Math.max(0,state.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
