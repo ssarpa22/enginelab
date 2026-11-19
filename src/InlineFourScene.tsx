@@ -14,7 +14,7 @@ const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMate
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;throw:THREE.Group;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];inGas:THREE.Mesh[];outGas:THREE.Mesh[];coolant:THREE.Mesh[];oilJets:THREE.Mesh[];flame:THREE.Mesh;waterMaterial:THREE.MeshStandardMaterial;};
-type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];};
+type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Mesh[];oilPump:THREE.Group;};
 
 export default function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
@@ -128,7 +128,7 @@ export default function InlineFourScene(props:Props){
   const floor=new THREE.Mesh(new THREE.CircleGeometry(Math.max(length,width)*.85,64),mat(0x182225,.9,.1));floor.rotation.x=-Math.PI/2;floor.position.y=-1.05;floor.receiveShadow=true;scene.add(floor);
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
-  const state:SceneState={parts,intakeCurves,exhaustCurves,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials};live.current=state;
+  const state:SceneState={parts,intakeCurves,exhaustCurves,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingPulleys,oilPump:pump};live.current=state;
   const render=()=>{controls.update();renderer.render(scene,camera);state.frame=requestAnimationFrame(render);};render();
   return()=>{cancelAnimationFrame(state.frame);observer.disconnect();controls.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const materials=Array.isArray(o.material)?o.material:[o.material];materials.forEach(m=>m.dispose());}});renderer.dispose();renderer.domElement.remove();live.current=null;};
  },[props.geometry]);
@@ -160,6 +160,8 @@ export default function InlineFourScene(props:Props){
    const heat=clamp((props.systems.headTemperatureC-40)/180,0,1);p.waterMaterial.color.setRGB(.08+.8*heat,.42-.2*heat,.5-.32*heat);
   });
   s.crank.rotation.z=-crankAngle;s.cams.forEach(cam=>{cam.rotation.z=-crankAngle*.5;});
+  s.timingPulleys.forEach((pulley,index)=>{pulley.rotation.z=index===0?-crankAngle:-crankAngle*.5;});
+  s.oilPump.rotation.z=-crankAngle*2;
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
   s.coolantMaterial.color.setHex(props.systems.coolantTemperatureC>105?0xa54a22:0x247f8b);
   s.metalMaterials[0]!.color.setHex(props.systems.headTemperatureC>180?0x9d5540:0x879599);
