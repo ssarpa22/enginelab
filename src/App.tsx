@@ -48,7 +48,7 @@ function App() {
   const cylinderModelGeometryRef=useRef<EngineGeometry|null>(null);
   const [shaftRpm,setShaftRpm]=useState(0);
   const crankshaftRef=useRef<CrankshaftDynamicState>({cycleAngleDeg:0,rpm:0});
-  const cylinderPressureRef=useRef<number[]>([101_325,101_325,101_325,101_325]);
+
   const [running,setRunning]=useState(true);
   const [engineMode,setEngineMode]=useState<"off"|"cranking"|"running">("off");
   const [assetView,setAssetView]=useState<"3d"|"2d">("3d");
@@ -73,23 +73,21 @@ function App() {
       cylinderModelStatesRef.current = [null,null,null,null];
     }
     return [0, 1, 2, 3].map(index => {
-      const phase = getInlineFourCylinderPhase(cycleAngle % 360, cycleAngle, index);
-      const previous = cylinderModelStatesRef.current[index] ?? createIncrementalCylinderState(geometry);
-      const integrated = advanceIncrementalCylinderState(previous, geometry, phase.cycleAngleDeg, effectiveRpm);
-      cylinderModelStatesRef.current[index] = integrated;
+      const state = cylinderModelStatesRef.current[index] ?? createIncrementalCylinderState(geometry);
+      cylinderModelStatesRef.current[index] = state;
       return {
-        ...integrated,
-        pressurePa:integrated.pressurePa*(1-damage.misfireProbability*.65)*(engineMode==="off"?0.35:1),
-        burnedFraction:integrated.burnedFraction*(1-damage.misfireProbability)*(engineMode==="running"?1:0),
-        indicatedTorqueNm:Math.max(0,integrated.indicatedTorqueNm*damage.powerFactor-frictionTorquePerCylinder),
-        indicatedPowerW:Math.max(0,integrated.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
-        heatReleaseRateW:integrated.heatReleaseRateW*(1-damage.misfireProbability)*(engineMode==="running"?1:0)
+        ...state,
+        pressurePa:state.pressurePa*(1-damage.misfireProbability*.65)*(engineMode==="off"?0.35:1),
+        burnedFraction:state.burnedFraction*(1-damage.misfireProbability)*(engineMode==="running"?1:0),
+        indicatedTorqueNm:Math.max(0,state.indicatedTorqueNm*damage.powerFactor-frictionTorquePerCylinder),
+        indicatedPowerW:Math.max(0,state.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
+        heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)*(engineMode==="running"?1:0)
       };
     });
   }, [geometry, cycleAngle, effectiveRpm, engineMode, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
   const crankCoupling=useMemo(()=>calculateInlineFourCrankCoupling(geometry,cycleAngle%360,effectiveRpm,cylinderStates.map(state=>state.pressurePa),101325,cycleAngle),[geometry,cycleAngle,effectiveRpm,cylinderStates]);
   const sceneTelemetry=useMemo(()=>cylinderStates.map(state=>({pressurePa:state.pressurePa})),[cylinderStates]);
-  cylinderPressureRef.current=cylinderStates.map(state=>state.pressurePa);
+
   const thermodynamics = cylinderStates[0]!;
   const mechanicalStates = useMemo(() => [0,1,2,3].map(index =>
     calculateCylinderMechanics(geometry,cycleAngle%360,cycleAngle,index,effectiveRpm,DEFAULT_VALVE_TIMING,damage.valveFloatSeverity,damage.thermalExpansionMm)
@@ -152,8 +150,16 @@ function App() {
             const substepSeconds=calculateCrankshaftSubstepSeconds(remaining,current.rpm,activeEngineMode==="running"?targetRpm:0);
             const from=((current.cycleAngleDeg%720)+720)%720;
             const distance=(sparkAngle-from+720)%720;
+            const currentCylinderStates=cylinderModelStatesRef.current.map((state,index)=>{
+              const initialized=state??createIncrementalCylinderState(geometry);
+              cylinderModelStatesRef.current[index]=initialized;
+              return initialized;
+            });
+            const cylinderPressures=currentCylinderStates.map(state=>
+              state.pressurePa*(1-damageRef.current.misfireProbability*.65)*(activeEngineMode==="off"?0.35:1)
+            );
             const coupling=calculateInlineFourCrankCoupling(
-              geometry,current.cycleAngleDeg%360,current.rpm,cylinderPressureRef.current,101_325,current.cycleAngleDeg
+              geometry,current.cycleAngleDeg%360,current.rpm,cylinderPressures,101_325,current.cycleAngleDeg
             );
             const gasTorque=activeEngineMode==="running"?coupling.indicatedGasTorqueNm:0;
             const starterTorque=activeEngineMode==="cranking"?calculateStarterTorque(current.rpm,true):0;
@@ -168,6 +174,13 @@ function App() {
               externalTorqueNm:starterTorque
             });
             crankshaftRef.current=nextCrankshaft;
+            // Advance each cylinder on every crank substep. This prevents the
+            // 30 Hz UI angle from wrapping past one or more 720° cycles at high RPM.
+            cylinderModelStatesRef.current=cylinderModelStatesRef.current.map((previous,index)=>{
+              const state=previous??createIncrementalCylinderState(geometry);
+              const phase=getInlineFourCylinderPhase(nextCrankshaft.cycleAngleDeg%360,nextCrankshaft.cycleAngleDeg,index);
+              return advanceIncrementalCylinderState(state,geometry,phase.cycleAngleDeg,nextCrankshaft.rpm);
+            });
             const advance=(nextCrankshaft.cycleAngleDeg-from+720)%720;
             if(activeEngineMode==="running"&&advance>0&&distance<=advance){
               setSparkFlash(true);
