@@ -26,9 +26,9 @@ describe("fixed-step physics clock", () => {
     const at60Fps = runFrames(Array(60).fill(1 / 60));
     const at144Fps = runFrames(Array(144).fill(1 / 144));
 
-    expect(at30Fps.steps).toBe(240);
-    expect(at60Fps.steps).toBe(240);
-    expect(at144Fps.steps).toBe(240);
+    expect(at30Fps.steps).toBe(2_400);
+    expect(at60Fps.steps).toBe(2_400);
+    expect(at144Fps.steps).toBe(2_400);
     expect(at30Fps.state.remainderSeconds).toBeCloseTo(at60Fps.state.remainderSeconds, 10);
     expect(at60Fps.state.remainderSeconds).toBeCloseTo(at144Fps.state.remainderSeconds, 10);
   });
@@ -54,8 +54,10 @@ describe("fixed-step physics clock", () => {
   it("scales elapsed simulation time for slow motion", () => {
     const normal = consumeFixedSteps(createFixedStepAccumulator(), 0.1, 1);
     const slow = consumeFixedSteps(createFixedStepAccumulator(), 0.1, 0.15);
-    expect(normal.stepCount).toBe(24);
-    expect(slow.stepCount).toBe(3);
+    const ultraSlow = consumeFixedSteps(createFixedStepAccumulator(), 0.1, 0.01);
+    expect(normal.stepCount).toBe(240);
+    expect(slow.stepCount).toBe(36);
+    expect(ultraSlow.stepCount).toBe(2);
   });
 
   it("rejects invalid elapsed time, time scale and accumulator state", () => {
