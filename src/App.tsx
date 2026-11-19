@@ -3,7 +3,7 @@ import { createEngineGeometry, type EngineGeometry } from "../packages/simulatio
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { millimetresToMetres, metresToMillimetres } from "../packages/simulation-core/src/units";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
-import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
+import { createIncrementalCylinderState, advanceIncrementalCylinderState, type IncrementalCylinderState } from "../packages/simulation-core/src/mechanics/incremental-cylinder";
 import EngineScene from "./InlineFourScene";
 import CadAssetScene from "./CadAssetScene";
 import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
@@ -109,6 +109,8 @@ function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
   const targetRpm=useDeferredValue(setup.rpm);
   const [cycleAngle,setCycleAngle]=useState(0);
+  const cylinderModelStatesRef=useRef<(IncrementalCylinderState|null)[]>([null,null,null,null]);
+  const cylinderModelGeometryRef=useRef<EngineGeometry|null>(null);
   const [shaftRpm,setShaftRpm]=useState(0);
   const crankshaftRef=useRef<CrankshaftDynamicState>({cycleAngleDeg:0,rpm:0});
   const gasTorqueRef=useRef(0);
@@ -130,18 +132,26 @@ function App() {
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,effectiveRpm),[geometry,crankAngle,effectiveRpm]);
   const phase=phaseAt(cycleAngle);
   const valveState=calculateValveState(cycleAngle);
-  const cylinderStates = useMemo(() => [0, 1, 2, 3].map(index => {
-    const phase = getInlineFourCylinderPhase(cycleAngle % 360, cycleAngle, index);
-    const state=calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, effectiveRpm);
-    return {
-      ...state,
-      pressurePa:state.pressurePa*(1-damage.misfireProbability*.65)*(engineMode==="off"?0.35:1),
-      burnedFraction:state.burnedFraction*(1-damage.misfireProbability)*(engineMode==="running"?1:0),
-      indicatedTorqueNm:Math.max(0,state.indicatedTorqueNm*damage.powerFactor-frictionTorquePerCylinder),
-      indicatedPowerW:Math.max(0,state.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
-      heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)*(engineMode==="running"?1:0)
-    };
-  }), [geometry, cycleAngle, effectiveRpm, engineMode, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
+  const cylinderStates = useMemo(() => {
+    if (cylinderModelGeometryRef.current !== geometry) {
+      cylinderModelGeometryRef.current = geometry;
+      cylinderModelStatesRef.current = [null,null,null,null];
+    }
+    return [0, 1, 2, 3].map(index => {
+      const phase = getInlineFourCylinderPhase(cycleAngle % 360, cycleAngle, index);
+      const previous = cylinderModelStatesRef.current[index] ?? createIncrementalCylinderState(geometry);
+      const integrated = advanceIncrementalCylinderState(previous, geometry, phase.cycleAngleDeg, effectiveRpm);
+      cylinderModelStatesRef.current[index] = integrated;
+      return {
+        ...integrated,
+        pressurePa:integrated.pressurePa*(1-damage.misfireProbability*.65)*(engineMode==="off"?0.35:1),
+        burnedFraction:integrated.burnedFraction*(1-damage.misfireProbability)*(engineMode==="running"?1:0),
+        indicatedTorqueNm:Math.max(0,integrated.indicatedTorqueNm*damage.powerFactor-frictionTorquePerCylinder),
+        indicatedPowerW:Math.max(0,integrated.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
+        heatReleaseRateW:integrated.heatReleaseRateW*(1-damage.misfireProbability)*(engineMode==="running"?1:0)
+      };
+    });
+  }, [geometry, cycleAngle, effectiveRpm, engineMode, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
   const crankCoupling=useMemo(()=>calculateInlineFourCrankCoupling(geometry,cycleAngle%360,effectiveRpm,cylinderStates.map(state=>state.pressurePa),101325,cycleAngle),[geometry,cycleAngle,effectiveRpm,cylinderStates]);
   const sceneTelemetry=useMemo(()=>cylinderStates.map(state=>({pressurePa:state.pressurePa,temperatureK:state.temperatureK,burnedFraction:state.burnedFraction,intakeFlowKgPerS:state.intakeMassFlowKgPerS,exhaustFlowKgPerS:state.exhaustMassFlowKgPerS})),[cylinderStates]);
   gasTorqueRef.current=engineMode==="running"?crankCoupling.indicatedGasTorqueNm:0;
@@ -242,7 +252,7 @@ function App() {
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
   },[running,targetRpm,visualRate,engineMode]);
-  const reset=()=>{setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
+  const reset=()=>{cylinderModelStatesRef.current=[null,null,null,null];cylinderModelGeometryRef.current=null;setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
     Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
