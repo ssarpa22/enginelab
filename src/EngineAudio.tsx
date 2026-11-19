@@ -21,6 +21,7 @@ type AudioRig = {
 export default function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props) {
   const rig = useRef<AudioRig | null>(null);
   const lastAngle = useRef<number | null>(null);
+  const lastAudioTime = useRef<number | null>(null);
   const [enabled, setEnabled] = useState(false);
 
   const start = () => {
@@ -108,6 +109,7 @@ export default function EngineAudio({ rpm, running, load = .45, cycleAngle, engi
     }
     void rig.current.context.resume();
     lastAngle.current = cycleAngle;
+    lastAudioTime.current = performance.now();
     setEnabled(true);
   };
 
@@ -139,24 +141,34 @@ export default function EngineAudio({ rpm, running, load = .45, cycleAngle, engi
   useEffect(() => {
     const active = rig.current;
     const previous = lastAngle.current;
+    const previousTime = lastAudioTime.current;
+    const nowMs = performance.now();
     lastAngle.current = cycleAngle;
-    if (!active || !enabled || !running || engineMode !== "running" || rpm < 120 || previous === null) return;
+    lastAudioTime.current = nowMs;
+    if (!active || !enabled || !running || engineMode !== "running" || rpm < 120 || previous === null || previousTime === null) return;
 
-    const delta = (cycleAngle - previous + 720) % 720;
-    if (delta <= 0 || delta >= 360) return;
-    const crossings = Math.floor((previous + delta) / 180) - Math.floor(previous / 180);
+    // Estimate angular travel over the UI sampling interval from the live shaft
+    // speed. This preserves every firing pulse even when a frame spans 360°+
+    // or the 720° cycle wraps between React updates.
+    const elapsed = Math.max(0, (nowMs - previousTime) / 1000);
+    const advanceDeg = Math.max(0, rpm * 6 * elapsed);
+    const crossings = Math.floor((previous + advanceDeg) / 180) - Math.floor(previous / 180);
     if (crossings <= 0) return;
 
     const { context, pulseBuffer, pulseFilter } = active;
     const pulseLevel = .16 + normalizeEngineLoad(load) * .26;
-    for (let i = 0; i < Math.min(crossings, 3); i++) {
+    const intervalSeconds = 30 / Math.max(120, rpm);
+    const firstCrossingDeg = 180 - (previous % 180);
+    const firstDelay = Math.max(0, firstCrossingDeg / (rpm * 6) - elapsed);
+    for (let i = 0; i < Math.min(crossings, 12); i++) {
       const source = context.createBufferSource();
       const gain = context.createGain();
+      const at = context.currentTime + firstDelay + i * intervalSeconds;
       source.buffer = pulseBuffer;
-      gain.gain.setValueAtTime(pulseLevel, context.currentTime + i * .002);
+      gain.gain.setValueAtTime(pulseLevel, at);
       source.connect(gain);
       gain.connect(pulseFilter);
-      source.start(context.currentTime + i * .002);
+      source.start(at);
       source.onended = () => { source.disconnect(); gain.disconnect(); };
     }
   }, [cycleAngle, enabled, running, engineMode, rpm, load]);
