@@ -68,6 +68,7 @@ export function advanceEngineDamage(
   }
 
   const rpm = input.rpm;
+  const running = rpm > 0;
   const load = clamp(input.load, 0, 1);
   const safeRpm = input.maximumSafeRpm ?? 6500;
   const oilPressure = Math.min(input.oilPressureBar, systems.oilPressureBar);
@@ -85,23 +86,23 @@ export function advanceEngineDamage(
     0, 0.45
   );
 
-  const bearingWear = clamp(previous.bearingWear + dtSeconds * (
+  const bearingWear = clamp(previous.bearingWear + dtSeconds * (running ? (
     oilStarvation ? (0.9 + load * 2.1) * Math.max(1, rpm / 1800) :
     oilOverheat ? 0.035 * Math.max(1, rpm / 2500) : 0.001
-  ), 0, 100);
-  const pistonScuffing = clamp(previous.pistonScuffing + dtSeconds * (
+  ) : 0), 0, 100);
+  const pistonScuffing = clamp(previous.pistonScuffing + dtSeconds * (running ? (
     (oilStarvation ? (0.42 + load) * Math.max(1, rpm / 2200) :
     input.headTemperatureC > 235 ? 0.45 : 0.0005) + Math.max(0, thermalExpansionMm - 0.06) * 0.3
-  ), 0, 100);
-  const valveTrainWear = clamp(previous.valveTrainWear + dtSeconds * (
+  ) : 0), 0, 100);
+  const valveTrainWear = clamp(previous.valveTrainWear + dtSeconds * (running ? (
     valveFloatTarget > 0 ? valveFloatTarget * (0.08 + load * 0.18) : 0.0004
-  ), 0, 100);
-  const rodFatigue = clamp(previous.rodFatigue + dtSeconds * (
+  ) : 0), 0, 100);
+  const rodFatigue = clamp(previous.rodFatigue + dtSeconds * (running ? (
     overRev ? ((rpm / safeRpm) ** 3) * (0.12 + load * 0.28) : 0.0002
-  ), 0, 100);
-  const headGasketDamage = clamp(previous.headGasketDamage + dtSeconds * (
+  ) : 0), 0, 100);
+  const headGasketDamage = clamp(previous.headGasketDamage + dtSeconds * (running ? (
     coolantOverheat ? (0.32 + Math.max(0, input.headTemperatureC - 220) * 0.018) : 0.0002
-  ), 0, 100);
+  ) : 0), 0, 100);
 
   const valveFloatSeverity = approach(previous.valveFloatSeverity, valveFloatTarget, dtSeconds * 1.8);
   const frictionTorqueNm = bearingWear * 0.075 + pistonScuffing * 0.11 +

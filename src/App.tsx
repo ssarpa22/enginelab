@@ -6,8 +6,9 @@ import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulatio
 import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
 import EngineScene from "./InlineFourScene";
 import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
-import { advanceEngineSystems, calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState, type EngineSystemsInput } from "../packages/simulation-core/src/mechanics/engine-systems";
-import { advanceEngineDamage, INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simulation-core/src/mechanics/engine-damage";
+import { calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState, type EngineSystemsInput } from "../packages/simulation-core/src/mechanics/engine-systems";
+import { advanceEngineSimulation } from "../packages/simulation-core/src/mechanics/engine-simulation";
+import { INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simulation-core/src/mechanics/engine-damage";
 import EngineAudio from "./EngineAudio";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
@@ -111,7 +112,11 @@ function App() {
   const systemsRef=useRef<EngineSystemsState>({...INITIAL_ENGINE_SYSTEMS});
   const [damage,setDamage]=useState<EngineDamageState>(INITIAL_ENGINE_DAMAGE);
   const damageRef=useRef<EngineDamageState>({...INITIAL_ENGINE_DAMAGE});
-  const effectiveRpm=damage.seized?0:setup.rpm*damage.powerFactor;
+  // RPM is the kinematic setpoint; damage reduces delivered torque/power, not crank speed.
+  // A seized engine is the only failure state that forcibly stops crank motion.
+  const effectiveRpm=damage.seized?0:setup.rpm;
+  const frictionTorquePerCylinder=damage.frictionTorqueNm/4;
+  const frictionPowerPerCylinder=frictionTorquePerCylinder*effectiveRpm*TAU/60;
   const systemInputRef=useRef<EngineSystemsInput>({rpm:INITIAL.rpm,load:.35,exhaustGasTemperatureC:450,ambientTemperatureC:25});
   const geometry=useMemo(()=>geometryFor(setup),[setup.boreMm,setup.strokeMm,setup.rodMm,setup.compressionRatio]);
   const crankAngle=(cycleAngle%360)*Math.PI/180;
@@ -125,11 +130,11 @@ function App() {
       ...state,
       pressurePa:state.pressurePa*(1-damage.misfireProbability*.65),
       burnedFraction:state.burnedFraction*(1-damage.misfireProbability),
-      indicatedTorqueNm:state.indicatedTorqueNm*damage.powerFactor,
-      indicatedPowerW:state.indicatedPowerW*damage.powerFactor,
+      indicatedTorqueNm:Math.max(0,state.indicatedTorqueNm*damage.powerFactor-frictionTorquePerCylinder),
+      indicatedPowerW:Math.max(0,state.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
       heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)
     };
-  }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor]);
+  }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
   const thermodynamics = cylinderStates[0]!;
   const mechanicalStates = useMemo(() => [0,1,2,3].map(index =>
     calculateCylinderMechanics(geometry,cycleAngle%360,cycleAngle,index,effectiveRpm,DEFAULT_VALVE_TIMING,damage.valveFloatSeverity,damage.thermalExpansionMm)
@@ -163,9 +168,21 @@ function App() {
     const tick=(time:number)=>{
       if(previous!==0){
         const dt=Math.min((time-previous)/1000,.05);
-        systemsRef.current=advanceEngineSystems(systemsRef.current,systemInputRef.current,dt);
-        if(time-lastSystemPaint>120){setSystems({...systemsRef.current});lastSystemPaint=time;}
-        const advance=dt*setup.rpm*damageRef.current.powerFactor*6*visualRate;
+        const actualRpm=damageRef.current.seized?0:setup.rpm;
+        const nextSimulation=advanceEngineSimulation(
+          {systems:systemsRef.current,damage:damageRef.current},
+          {...systemInputRef.current,rpm:actualRpm},
+          dt
+        );
+        systemsRef.current=nextSimulation.systems;
+        damageRef.current=nextSimulation.damage;
+        if(time-lastSystemPaint>120||nextSimulation.damage.seized){
+          setSystems({...nextSimulation.systems});
+          setDamage({...nextSimulation.damage});
+          lastSystemPaint=time;
+        }
+        const advance=nextSimulation.damage.seized?0:dt*setup.rpm*6*visualRate;
+        if(nextSimulation.damage.seized)setRunning(false);
         const from=((cycleAngleRef.current%720)+720)%720;
         const distance=(sparkAngle-from+720)%720;
         if(advance>0&&distance<=advance){
