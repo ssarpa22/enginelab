@@ -41,7 +41,7 @@ describe("pressure-coupled inline-four crankshaft", () => {
   });
 
   it("coasts down when the speed target is zero and rejects unstable time steps", () => {
-    const next = stepCrankshaft({ cycleAngleDeg: 20, rpm: 1_000 }, 0, { targetRpm: 0, dtSeconds: 0.01 });
+    const next = stepCrankshaft({ cycleAngleDeg: 20, rpm: 1_000 }, 100, { targetRpm: 0, dtSeconds: 0.01 });
     expect(next.rpm).toBeLessThan(1_000);
     expect(() => stepCrankshaft({ cycleAngleDeg: 0, rpm: 1_000 }, 0, { targetRpm: 1_000, dtSeconds: 0.2 })).toThrow(RangeError);
   });
