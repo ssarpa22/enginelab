@@ -102,6 +102,7 @@ function Mechanism({ geometry, angle, sparkFlash }: { geometry: EngineGeometry; 
 
 function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
+  const [faults,setFaults]=useState({oilLeakLPerMin:0,coolantLeakLPerMin:0});
   const [cycleAngle,setCycleAngle]=useState(0);
   const cycleAngleRef=useRef(0);
   const [running,setRunning]=useState(true);
@@ -140,7 +141,11 @@ function App() {
     rpm:setup.rpm,
     load:clamp(.12+meanBurn*.78,.1,.95),
     exhaustGasTemperatureC:clamp(meanGasTemperature*.42-90,25,950),
-    ambientTemperatureC:25
+    ambientTemperatureC:25,
+    oilLeakLPerMin:faults.oilLeakLPerMin+damageRef.current.bearingWear*.004+damageRef.current.pistonScuffing*.003,
+    coolantLeakLPerMin:faults.coolantLeakLPerMin+damageRef.current.headGasketDamage*.012,
+    oilPickupAvailability:1,
+    coolantPumpEfficiency:1
   };
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
@@ -261,6 +266,8 @@ function App() {
         <div className="control-group"><div className="control-label-row"><label htmlFor="rod">LARGO DE BIELA</label><output>{setup.rodMm} mm</output></div><input id="rod" type="range" min={rodMin} max="220" step="1" value={setup.rodMm} onChange={e=>update("rodMm",Number(e.target.value))}/><div className="range-ends"><span>{rodMin} mm</span><span>220 mm</span></div></div>
         <div className="control-group"><div className="control-label-row"><label htmlFor="compression">RELACIÓN DE COMPRESIÓN</label><output>{fmt(setup.compressionRatio,1)} : 1</output></div><input id="compression" type="range" min="7" max="15" step="0.1" value={setup.compressionRatio} onChange={e=>update("compressionRatio",Number(e.target.value))}/><div className="range-ends"><span>7 : 1</span><span>15 : 1</span></div></div>
         <div className="control-group rpm-control"><div className="control-label-row"><label htmlFor="rpm">RÉGIMEN DEL MOTOR</label><output>{setup.rpm.toLocaleString("es-AR")} RPM</output></div><input id="rpm" type="range" min="0" max="8000" step="50" value={setup.rpm} onChange={e=>update("rpm",Number(e.target.value))}/><div className="range-ends"><span>0 RPM</span><span>8.000 RPM</span></div></div>
+        <div className="control-group"><div className="control-label-row"><label htmlFor="oil-leak">FUGA DE ACEITE INDUCIDA</label><output>{faults.oilLeakLPerMin.toFixed(1)} L/min</output></div><input id="oil-leak" type="range" min="0" max="4" step="0.1" value={faults.oilLeakLPerMin} onChange={e=>setFaults(v=>({...v,oilLeakLPerMin:Number(e.target.value)}))}/><div className="range-ends"><span>Sin fuga</span><span>Fuga severa</span></div></div>
+        <div className="control-group"><div className="control-label-row"><label htmlFor="coolant-leak">FUGA DE REFRIGERANTE INDUCIDA</label><output>{faults.coolantLeakLPerMin.toFixed(1)} L/min</output></div><input id="coolant-leak" type="range" min="0" max="4" step="0.1" value={faults.coolantLeakLPerMin} onChange={e=>setFaults(v=>({...v,coolantLeakLPerMin:Number(e.target.value)}))}/><div className="range-ends"><span>Sin fuga</span><span>Fuga severa</span></div></div>
         <div className="derived-box"><div className="derived-heading">DATOS MECÁNICOS <span>CALCULADOS</span></div>
           <div className="derived-row"><span>Radio del cigüeñal</span><strong>{fmt(metresToMillimetres(geometry.crankRadiusM),1)} mm</strong></div>
           <div className="derived-row"><span>Relación biela / manivela</span><strong>{fmt(geometry.rodToCrankRatio,2)} : 1</strong></div>
