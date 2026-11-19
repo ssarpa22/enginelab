@@ -70,14 +70,20 @@ export function advanceEngineDamage(
   const rpm = input.rpm;
   const load = clamp(input.load, 0, 1);
   const safeRpm = input.maximumSafeRpm ?? 6500;
+  const oilPressure = Math.min(input.oilPressureBar, systems.oilPressureBar);
   const oilStarvation = rpm > 650 && (
-    input.oilPressureBar < (input.minimumOilPressureBar ?? 1.0) ||
+    oilPressure < (input.minimumOilPressureBar ?? 1.0) ||
     input.bearingFilmRatio < 0.48
   );
   const oilOverheat = input.oilTemperatureC > 135;
   const coolantOverheat = input.coolantTemperatureC > 112 || input.headTemperatureC > 220;
   const overRev = rpm > safeRpm;
   const valveFloatTarget = clamp((rpm - 6100) / 1900, 0, 1);
+  // Differential piston-to-liner growth relative to a 20 °C reference.
+  const thermalExpansionMm = clamp(
+    Math.max(0, input.headTemperatureC - 20) * 0.000012 * 86,
+    0, 0.45
+  );
 
   const bearingWear = clamp(previous.bearingWear + dtSeconds * (
     oilStarvation ? (0.9 + load * 2.1) * Math.max(1, rpm / 1800) :
@@ -85,8 +91,8 @@ export function advanceEngineDamage(
   ), 0, 100);
   const pistonScuffing = clamp(previous.pistonScuffing + dtSeconds * (
     oilStarvation ? (0.42 + load) * Math.max(1, rpm / 2200) :
-    input.headTemperatureC > 235 ? 0.45 : 0.0005) + Math.max(0, thermalExpansionMm - 0.06) * 3
-  ), 0, 100);
+    input.headTemperatureC > 235 ? 0.45 : 0.0005
+  ) + Math.max(0, thermalExpansionMm - 0.06) * 3, 0, 100);
   const valveTrainWear = clamp(previous.valveTrainWear + dtSeconds * (
     valveFloatTarget > 0 ? valveFloatTarget * (0.08 + load * 0.18) : 0.0004
   ), 0, 100);
@@ -97,11 +103,6 @@ export function advanceEngineDamage(
     coolantOverheat ? (0.32 + Math.max(0, input.headTemperatureC - 220) * 0.018) : 0.0002
   ), 0, 100);
 
-  // Aluminum piston growth is approximated relative to a 20 °C reference.
-  const thermalExpansionMm = clamp(
-    Math.max(0, input.headTemperatureC - 20) * 0.000012 * 86,
-    0, 0.45
-  );
   const valveFloatSeverity = approach(previous.valveFloatSeverity, valveFloatTarget, dtSeconds * 1.8);
   const frictionTorqueNm = bearingWear * 0.075 + pistonScuffing * 0.11 +
     valveTrainWear * 0.018 + (oilStarvation ? 8 * load : 0);
