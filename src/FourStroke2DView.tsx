@@ -63,9 +63,7 @@ export default function FourStroke2DView({geometry}:Props){
   const intakeFlow=valve.intakeOpen ? 0.024 : 0;
   const exhaustFlow=valve.exhaustOpen ? 0.021 : 0;
   const speedLabel=speed<.3?"MUY LENTA":speed<.7?"LENTA":"NORMAL";
-  const camAngle=cycle*Math.PI/360;
-  const intakeCamRotation=-18+valve.intakeLiftMm*2.1;
-  const exhaustCamRotation=18-valve.exhaustLiftMm*2.1;
+  const camRotationDeg=cycle/2;
   return <section className="four-stroke-2d" aria-label="Corte bidimensional independiente del ciclo de cuatro tiempos">
     <div className="four-stroke-2d-toolbar"><div><span className="view-live-dot"/><span>SECCIÓN LONGITUDINAL · CICLO DIDÁCTICO INDEPENDIENTE</span></div><span className="view-angle">{fmt(cycle,0)}° / 720°</span></div>
     <div className="two-d-controls">
@@ -106,10 +104,10 @@ export default function FourStroke2DView({geometry}:Props){
         <text x="24" y="67" className="section-label intake">COLECTOR DE ADMISIÓN</text><text x="736" y="67" textAnchor="end" className="section-label exhaust">COLECTOR DE ESCAPE</text>
       </g>
       <g className="section-valves">
-        <g className="section-cam-assembly" transform={`rotate(${intakeCamRotation+Math.sin(camAngle)*8} ${cx-42} 18)`}>
+        <g className="section-cam-assembly" transform={`rotate(${camRotationDeg} ${cx-42} 18)`}>
           <circle cx={cx-42} cy="18" r="12" className="section-cam-base"/><ellipse cx={cx-42} cy="7" rx="8" ry="15" className="section-cam-lobe"/>
         </g>
-        <g className="section-cam-assembly" transform={`rotate(${exhaustCamRotation+Math.sin(camAngle+Math.PI)*8} ${cx+42} 18)`}>
+        <g className="section-cam-assembly" transform={`rotate(${camRotationDeg} ${cx+42} 18)`}>
           <circle cx={cx+42} cy="18" r="12" className="section-cam-base"/><ellipse cx={cx+42} cy="7" rx="8" ry="15" className="section-cam-lobe"/>
         </g>
         <rect x={cx-53} y={25+intakeLift} width="22" height="9" rx="2" className="section-follower"/>
