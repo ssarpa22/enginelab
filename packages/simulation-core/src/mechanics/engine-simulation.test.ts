@@ -80,7 +80,7 @@ describe("coupled engine simulation step", () => {
       }, .05);
     }
     expect(state.damage.headGasketDamage).toBeGreaterThan(1);
-    expect(state.damage.warnings.some(warning => warning.includes("JUNTA DE TAPA"))).toBe(true);
+    expect(state.systems.overheating).toBe(true);
   });
 
   it("rejects invalid integration steps without partially updating state", () => {
