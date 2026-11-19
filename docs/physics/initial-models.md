@@ -164,3 +164,63 @@ from 0.1x to 1.0x without changing the configured RPM or the underlying
 mechanical/thermodynamic equations. The spark event is triggered when the
 simulation crosses the configured advance angle and receives a short visual
 hold so it remains visible at normal display frame rates.
+
+
+## Coupled 0-D cylinder model (educational reference)
+
+The current simulator advances a single-zone open-system cylinder balance in
+one-degree crank-angle increments over a 720-degree four-stroke cycle. The
+state includes cylinder mass, internal energy, pressure, temperature, valve
+mass flow, heat-release rate, burned fraction and instantaneous indicated
+work/torque.
+
+Mass flow through each valve uses a compressible isentropic nozzle relation
+with a choked-flow branch. The effective flow area is approximated by the
+valve curtain area, \(A=\pi D_v L_v\), scaled by a configurable effective
+valve diameter and discharge coefficient. Flow direction is pressure-driven,
+so reversion is possible when cylinder and port pressure gradients reverse.
+This is more physically meaningful than emitting particles only because a
+valve is open, but it still omits detailed port geometry and measured flow
+coefficients.
+
+The internal-energy balance includes:
+- piston boundary work, \(-p\,dV\);
+- inlet and outlet enthalpy transport;
+- finite-duration combustion heat release using a Wiebe burn-fraction curve;
+- a lumped wall heat-transfer loss to a fixed wall-temperature boundary.
+
+The heat input per cycle, wall coefficient, manifold boundary conditions,
+specific heats, discharge coefficient and valve dimensions are reference
+assumptions. They are exposed in the model configuration so future work can
+replace them with engine-specific data. The current indicated torque is an
+instantaneous pressure-force/slider-crank estimate, not a cycle-averaged
+dynamometer result; indicated power is the instantaneous torque multiplied
+by crankshaft angular speed.
+
+## Interactive 3-D engine cutaway
+
+The Three.js view contains a cylinder liner and translucent block, piston and
+ring pack, wrist pin, connecting rod, crank webs and pin, intake/exhaust
+valves, twin camshafts, spark plug and curved intake/exhaust ducts. The crank,
+piston, rod, valves and camshafts are driven from the same 720-degree cycle
+angle and slider-crank/valve-lift functions used by the simulation core.
+Camera orbit and zoom are interactive.
+
+Fresh-charge and exhaust parcels move along their respective ducts. Their
+visibility and direction respond to the signed mass-flow estimates from the
+cylinder model; combustion glow and chamber parcels respond to burned
+fraction and cylinder pressure. These particles are visualization markers,
+not molecular or CFD particles. The 3-D geometry is illustrative and not a
+manufacturing drawing.
+
+## Important limits and next fidelity steps
+
+This is a lumped 0-D teaching model coupled to a 3-D visualization, not a
+full gas-dynamics solver. It does not yet solve spatial pressure/velocity
+fields, turbulence, swirl/tumble, flame-front propagation, detailed fuel
+chemistry, species/NOx/soot, multi-zone wall temperatures, acoustic intake
+and exhaust waves, valve-seat flow coefficients, ring blow-by, crankshaft
+torsional dynamics, friction maps, bearing loads or calibrated heat-transfer
+correlations. Those require engine-specific inputs and substantially more
+numerical machinery. The UI must not present current values as validated
+performance predictions.
