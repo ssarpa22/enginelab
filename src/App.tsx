@@ -9,7 +9,7 @@ import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mech
 import { calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState, type EngineSystemsInput } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { advanceEngineSimulation } from "../packages/simulation-core/src/mechanics/engine-simulation";
 import { INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simulation-core/src/mechanics/engine-damage";
-import { calculateInlineFourCrankCoupling, stepCrankshaft, type CrankshaftDynamicState } from "../packages/simulation-core/src/mechanics/crankshaft-coupling";
+import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, stepCrankshaft, type CrankshaftDynamicState } from "../packages/simulation-core/src/mechanics/crankshaft-coupling";
 import EngineAudio from "./EngineAudio";
 import FourStroke2DView from "./FourStroke2DView";
 import { calculateStarterTorque, starterCanDisengage } from "../packages/simulation-core/src/mechanics/starter-system";
@@ -48,7 +48,7 @@ function App() {
   const cylinderModelGeometryRef=useRef<EngineGeometry|null>(null);
   const [shaftRpm,setShaftRpm]=useState(0);
   const crankshaftRef=useRef<CrankshaftDynamicState>({cycleAngleDeg:0,rpm:0});
-  const gasTorqueRef=useRef(0);
+  const cylinderPressureRef=useRef<number[]>([101_325,101_325,101_325,101_325]);
   const [running,setRunning]=useState(true);
   const [engineMode,setEngineMode]=useState<"off"|"cranking"|"running">("off");
   const [assetView,setAssetView]=useState<"3d"|"2d">("3d");
@@ -89,7 +89,7 @@ function App() {
   }, [geometry, cycleAngle, effectiveRpm, engineMode, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
   const crankCoupling=useMemo(()=>calculateInlineFourCrankCoupling(geometry,cycleAngle%360,effectiveRpm,cylinderStates.map(state=>state.pressurePa),101325,cycleAngle),[geometry,cycleAngle,effectiveRpm,cylinderStates]);
   const sceneTelemetry=useMemo(()=>cylinderStates.map(state=>({pressurePa:state.pressurePa})),[cylinderStates]);
-  gasTorqueRef.current=engineMode==="running"?crankCoupling.indicatedGasTorqueNm:0;
+  cylinderPressureRef.current=cylinderStates.map(state=>state.pressurePa);
   const thermodynamics = cylinderStates[0]!;
   const mechanicalStates = useMemo(() => [0,1,2,3].map(index =>
     calculateCylinderMechanics(geometry,cycleAngle%360,cycleAngle,index,effectiveRpm,DEFAULT_VALVE_TIMING,damage.valveFloatSeverity,damage.thermalExpansionMm)
@@ -117,7 +117,7 @@ function App() {
     return next;
   });
   useEffect(()=>{
-    if(!running)return;
+    if(!running||assetView!=="3d")return;
     let frame=0,previous=0,sparkTimer=0,lastSystemPaint=0,lastUiPaint=0;
     let accumulator=createFixedStepAccumulator();
     let activeEngineMode=engineMode;
@@ -143,28 +143,41 @@ function App() {
             seized=true;
             break;
           }
-          const from=((crankshaftRef.current.cycleAngleDeg%720)+720)%720;
-          const distance=(sparkAngle-from+720)%720;
-          const starterTorque=activeEngineMode==="cranking"?calculateStarterTorque(crankshaftRef.current.rpm,true):0;
-          const nextCrankshaft=stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{
-            targetRpm:activeEngineMode==="running"?targetRpm:0,
-            dtSeconds:dt,
-            loadTorqueNm:activeEngineMode==="cranking"?8:22,
-            frictionTorqueNm:3,
-            inertiaKgM2:.42,
-            governorGainNmPerRpm:.8,
-            maximumGasTorqueNm:220,
-            externalTorqueNm:starterTorque
-          });
-          crankshaftRef.current=nextCrankshaft;
-          const advance=(nextCrankshaft.cycleAngleDeg-from+720)%720;
-          if(activeEngineMode==="running"&&advance>0&&distance<=advance){
-            setSparkFlash(true);
-            window.clearTimeout(sparkTimer);
-            sparkTimer=window.setTimeout(()=>setSparkFlash(false),95/visualRate);
+
+          // Subdivide each fixed step so high RPM never jumps across a large
+          // part of the four-stroke cycle in one crankshaft integration.
+          let remaining=dt;
+          while(remaining>1e-10){
+            const current=crankshaftRef.current;
+            const substepSeconds=calculateCrankshaftSubstepSeconds(remaining,current.rpm,activeEngineMode==="running"?targetRpm:0);
+            const from=((current.cycleAngleDeg%720)+720)%720;
+            const distance=(sparkAngle-from+720)%720;
+            const coupling=calculateInlineFourCrankCoupling(
+              geometry,current.cycleAngleDeg%360,current.rpm,cylinderPressureRef.current,101_325,current.cycleAngleDeg
+            );
+            const gasTorque=activeEngineMode==="running"?coupling.indicatedGasTorqueNm:0;
+            const starterTorque=activeEngineMode==="cranking"?calculateStarterTorque(current.rpm,true):0;
+            const nextCrankshaft=stepCrankshaft(current,gasTorque,{
+              targetRpm:activeEngineMode==="running"?targetRpm:0,
+              dtSeconds:substepSeconds,
+              loadTorqueNm:activeEngineMode==="cranking"?8:22,
+              frictionTorqueNm:3,
+              inertiaKgM2:.42,
+              governorGainNmPerRpm:.8,
+              maximumGasTorqueNm:220,
+              externalTorqueNm:starterTorque
+            });
+            crankshaftRef.current=nextCrankshaft;
+            const advance=(nextCrankshaft.cycleAngleDeg-from+720)%720;
+            if(activeEngineMode==="running"&&advance>0&&distance<=advance){
+              setSparkFlash(true);
+              window.clearTimeout(sparkTimer);
+              sparkTimer=window.setTimeout(()=>setSparkFlash(false),Math.min(95/visualRate,12));
+            }
+            if(activeEngineMode==="cranking"&&starterCanDisengage(nextCrankshaft.rpm))activeEngineMode="running";
+            if(activeEngineMode==="running"&&nextCrankshaft.rpm<8&&targetRpm===0)activeEngineMode="off";
+            remaining-=substepSeconds;
           }
-          if(activeEngineMode==="cranking"&&starterCanDisengage(nextCrankshaft.rpm))activeEngineMode="running";
-          if(activeEngineMode==="running"&&nextCrankshaft.rpm<8&&targetRpm===0)activeEngineMode="off";
         }
         if(activeEngineMode!==engineMode)setEngineMode(activeEngineMode);
         if(time-lastSystemPaint>120||seized){
@@ -186,7 +199,7 @@ function App() {
     };
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
-  },[running,targetRpm,visualRate,engineMode]);
+  },[running,targetRpm,visualRate,engineMode,assetView,geometry]);
   const reset=()=>{cylinderModelStatesRef.current=[null,null,null,null];cylinderModelGeometryRef.current=null;setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
