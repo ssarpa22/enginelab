@@ -47,3 +47,7 @@
 .thermo-values>div{min-width:0}
 .thermo-values strong{font-size:18px}
 @media(max-width:620px){.engine-3d-host{height:360px}.engine-3d-hint{right:7px;top:7px;font-size:7px}.engine-3d-axis{left:7px;bottom:7px}.thermo-values strong{font-size:16px}}
+
+/* Inline-four cutaway needs room to inspect all four bores and the timing drive. */
+.engine-3d-inline-four{height:540px}
+@media(max-width:620px){.engine-3d-inline-four{height:420px}}
