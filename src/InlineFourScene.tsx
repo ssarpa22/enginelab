@@ -257,8 +257,8 @@ function InlineFourScene(props:Props){
   for(let i=0;i<4;i++){
    const z=zAt(i);
    for(const dz of [-bore*.12,bore*.12]){
-    makeTube(scene,[vec(-bore*.28,deck-.005,z+dz),vec(-bore*.36,deck-.035,z+dz),vec(-width*.43,deck-.08,z+dz*.72),vec(-width*.52,deck-.08,z+dz*.72)],.058,intakeMaterial);
-    makeTube(scene,[vec(bore*.28,deck-.005,z+dz),vec(bore*.36,deck-.035,z+dz),vec(width*.43,deck-.08,z+dz*.72),vec(width*.52,deck-.08,z+dz*.72)],.061,exhaustMaterial);
+    makeTube(scene,[vec(-bore*.28,deck-.005,z+dz),vec(-bore*.36,deck-.035,z+dz),vec(-width*.43,deck-.08,z+dz*.72),vec(-width*.50,deck-.04,z+.16)],.058,intakeMaterial);
+    makeTube(scene,[vec(bore*.28,deck-.005,z+dz),vec(bore*.36,deck-.035,z+dz),vec(width*.43,deck-.08,z+dz*.72),vec(width*.50,deck-.04,z-.16)],.061,exhaustMaterial);
    }
   }
   // Individual four-into-one runners give the gas paths a recognisable cast-manifold layout.
