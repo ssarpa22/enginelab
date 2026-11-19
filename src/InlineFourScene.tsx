@@ -152,7 +152,7 @@ export default function InlineFourScene(props:Props){
   const s=live.current;if(!s)return;
   const stroke=props.geometry.strokeM*(2.2/props.geometry.strokeM),r=props.geometry.crankRadiusM*(2.2/props.geometry.strokeM);
   const rod=props.geometry.connectingRodLengthM*(2.2/props.geometry.strokeM),clearance=props.geometry.clearanceVolumePerCylinderM3/(Math.PI*props.geometry.boreM**2/4)*(2.2/props.geometry.strokeM);
-  const bore=props.geometry.boreM*(2.2/props.geometry.strokeM),pistonTopOffset=.32,deck=rod+r+pistonTopOffset+clearance,spacing=Math.max(bore*1.3,bore+.72),crankAngle=((props.angle%360)+360)%360*Math.PI/180;
+  const bore=props.geometry.boreM*(2.2/props.geometry.strokeM),pistonTopOffset=.32,deck=rod+r+pistonTopOffset+clearance,spacing=Math.max(bore*1.18,bore+.18),crankAngle=((props.angle%360)+360)%360*Math.PI/180;
   s.parts.forEach((p,i)=>{
    const z=(i-1.5)*spacing,phase=(props.angle+(INLINE_FOUR_CYCLE_OFFSETS_DEG[i]??0))%720,theta=crankAngle+(INLINE_FOUR_CRANK_PHASES_DEG[i]??0)*Math.PI/180;
    const state=props.mechanics[i],gas=props.cylinderStates[i];if(!state||!gas)return;
