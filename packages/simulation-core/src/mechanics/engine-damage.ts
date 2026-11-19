@@ -128,8 +128,8 @@ export function advanceEngineDamage(
 
   return {
     bearingWear, pistonScuffing, valveTrainWear, rodFatigue, headGasketDamage,
-    thermalExpansionMm, valveFloatSeverity, frictionTorqueNm, powerFactor,
-    misfireProbability, seized, warnings
+    thermalExpansionMm, valveFloatSeverity, frictionTorqueNm,
+    powerFactor: seized ? 0 : powerFactor, misfireProbability, seized, warnings
   };
 }
 
