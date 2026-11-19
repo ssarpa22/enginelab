@@ -221,8 +221,11 @@ function App() {
               <span className={systems.lubricationWarning?"warning-state":"healthy-state"}>{systems.lubricationWarning?"⚠ PRESIÓN / PELÍCULA DE ACEITE BAJA":"✓ LUBRICACIÓN DENTRO DEL RANGO"}</span>
               <span className={systems.overheating?"warning-state":"healthy-state"}>{systems.overheating?"⚠ TEMPERATURA EXCESIVA":"✓ REFRIGERACIÓN ESTABLE"}</span>
               {mechanicalStates.some(state=>state.valveCollision)&&<span className="warning-state">⚠ LIMITADOR DE INTERFERENCIA ACTIVADO</span>}
+              {mechanicalStates.some(state=>state.mechanicalWarning)&&<span className="warning-state">{mechanicalStates.find(state=>state.mechanicalWarning)!.mechanicalWarning}</span>}
             </div>
             <div className="derived-row"><span>Holgura mínima pistón-válvula</span><strong>{fmt(Math.min(...mechanicalStates.map(state=>state.minimumValveClearanceMm)),2)} mm</strong></div>
+            <div className="derived-row"><span>Holgura biela / bloque</span><strong>{fmt(Math.min(...mechanicalStates.map(state=>state.rodToBlockClearanceMm)),2)} mm</strong></div>
+            <div className="derived-row"><span>Holgura radial de falda</span><strong>{fmt(mechanicalStates[0]!.skirtClearanceMm,3)} mm</strong></div>
             <div className="derived-row"><span>Alzada efectiva admisión / escape</span><strong>{fmt(mechanicalStates[0]!.intakeLiftActualMm,2)} / {fmt(mechanicalStates[0]!.exhaustLiftActualMm,2)} mm</strong></div>
           </div></div>
       </section>
