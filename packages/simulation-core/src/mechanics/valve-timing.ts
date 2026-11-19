@@ -46,8 +46,8 @@ export function calculateCamLobeProfileCycleAngleDeg(
 
 /**
  * Resolves the cycle angle currently touching the fixed top-side bucket follower.
- * The cam is phased by -camshaftAngle + camCenter/2, so the follower samples
- * the profile at 90° + camshaftAngle - camCenter/2. This must equal crank cycle
+ * The cam is phased by -camshaftAngle + camCenter/2, so the underside follower samples
+ * the profile at 270° + camshaftAngle - camCenter/2. This must equal crank cycle
  * angle + cylinder offset when the camshaft is driven at half crank speed.
  */
 export function calculateCamFollowerCycleAngleDeg(
