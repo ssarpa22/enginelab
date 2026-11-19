@@ -6,6 +6,8 @@ import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulatio
 import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
 import EngineScene from "./InlineFourScene";
 import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
+import { advanceEngineSystems, calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState } from "../packages/simulation-core/src/mechanics/engine-systems";
+import EngineAudio from "./EngineAudio";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: 10.5, rpm: 1800 };
@@ -104,6 +106,9 @@ function App() {
   const [running,setRunning]=useState(true);
   const [visualRate,setVisualRate]=useState(1);
   const [sparkFlash,setSparkFlash]=useState(false);
+  const [systems,setSystems]=useState<EngineSystemsState>(INITIAL_ENGINE_SYSTEMS);
+  const systemsRef=useRef<EngineSystemsState>({...INITIAL_ENGINE_SYSTEMS});
+  const systemInputRef=useRef({rpm:INITIAL.rpm,load:.35,exhaustGasTemperatureC:450,ambientTemperatureC:25});
   const geometry=useMemo(()=>geometryFor(setup),[setup]);
   const crankAngle=(cycleAngle%360)*Math.PI/180;
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
@@ -114,6 +119,17 @@ function App() {
     return calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, setup.rpm);
   }), [geometry, cycleAngle, setup.rpm]);
   const thermodynamics = cylinderStates[0]!;
+  const mechanicalStates = useMemo(() => [0,1,2,3].map(index =>
+    calculateCylinderMechanics(geometry,cycleAngle%360,cycleAngle,index,setup.rpm)
+  ),[geometry,cycleAngle,setup.rpm]);
+  const meanGasTemperature = cylinderStates.reduce((sum,state)=>sum+state.temperatureK,0)/cylinderStates.length;
+  const meanBurn = cylinderStates.reduce((sum,state)=>sum+state.burnedFraction,0)/cylinderStates.length;
+  systemInputRef.current = {
+    rpm:setup.rpm,
+    load:clamp(.12+meanBurn*.78,.1,.95),
+    exhaustGasTemperatureC:clamp(meanGasTemperature*.42-90,25,950),
+    ambientTemperatureC:25
+  };
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
   const spark=valveState.sparkActive;
@@ -127,7 +143,7 @@ function App() {
   });
   useEffect(()=>{
     if(!running||setup.rpm===0)return;
-    let frame=0,previous=0,sparkTimer=0;
+    let frame=0,previous=0,sparkTimer=0,lastSystemPaint=0;
     const sparkAngle=360-DEFAULT_VALVE_TIMING.sparkAdvanceBtdc;
     const tick=(time:number)=>{
       if(previous!==0){
@@ -150,7 +166,7 @@ function App() {
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
   },[running,setup.rpm,visualRate]);
-  const reset=()=>{setSetup(INITIAL);cycleAngleRef.current=0;setCycleAngle(0);setVisualRate(1);setSparkFlash(false);setRunning(true);};
+  const reset=()=>{setSetup(INITIAL);cycleAngleRef.current=0;setCycleAngle(0);setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
     Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
@@ -176,16 +192,35 @@ function App() {
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
         <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>Conjunto mecánico y distribución</h2></div><span className="panel-chip"><span className="status-dot"/> VISTA ANIMADA</span></div>
-        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} pressurePa={thermodynamics.pressurePa} burnedFraction={thermodynamics.burnedFraction} intakeFlowKgPerS={thermodynamics.intakeMassFlowKgPerS} exhaustFlowKgPerS={thermodynamics.exhaustMassFlowKgPerS} cylinderStates={cylinderStates.map(state => ({ pressurePa: state.pressurePa, burnedFraction: state.burnedFraction, intakeFlowKgPerS: state.intakeMassFlowKgPerS, exhaustFlowKgPerS: state.exhaustMassFlowKgPerS }))} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
+        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} rpm={setup.rpm} mechanics={mechanicalStates} systems={systems} pressurePa={thermodynamics.pressurePa} burnedFraction={thermodynamics.burnedFraction} intakeFlowKgPerS={thermodynamics.intakeMassFlowKgPerS} exhaustFlowKgPerS={thermodynamics.exhaustMassFlowKgPerS} cylinderStates={cylinderStates.map(state => ({ pressurePa: state.pressurePa, burnedFraction: state.burnedFraction, intakeFlowKgPerS: state.intakeMassFlowKgPerS, exhaustFlowKgPerS: state.exhaustMassFlowKgPerS }))} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
-          <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div>
+          <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div><EngineAudio rpm={setup.rpm} running={running}/>
           <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD DE SIMULACIÓN <strong>{visualRate.toFixed(1)}x</strong></label><input id="playback-speed" type="range" min="0.1" max="1" step="0.1" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}/><span className="speed-endpoints">0.1x — 1.0x</span></div>
         </div>
         <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{const next=Number(e.target.value);setRunning(false);cycleAngleRef.current=next;setCycleAngle(next);}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
         <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p><div className="valve-live-state"><span className={intakeOpen?"is-open":"is-closed"}>ADMISIÓN: {intakeOpen?"ABIERTA":"CERRADA"} · {fmt(valveState.intakeLiftMm,1)} mm</span><span className={exhaustOpen?"is-open":"is-closed"}>ESCAPE: {exhaustOpen?"ABIERTO":"CERRADO"} · {fmt(valveState.exhaustLiftMm,1)} mm</span><span className={spark?"spark-live":""}>ENCENDIDO: {spark?"CHISPA":"EN ESPERA"}</span><span>FLUJO: {intakeOpen?"ADMISIÓN":exhaustOpen?"GASES DE ESCAPE":"SIN INTERCAMBIO"}</span></div></div></div>
         <div className="timing-card"><div className="timing-card-heading">CALADO DE DISTRIBUCIÓN <span>REFERENCIA INICIAL</span></div><div className="timing-grid"><div><span>Admisión abre</span><strong>{DEFAULT_VALVE_TIMING.intakeOpensBtdc}° antes PMS</strong></div><div><span>Admisión cierra</span><strong>{DEFAULT_VALVE_TIMING.intakeClosesAbdc}° después PMI</strong></div><div><span>Escape abre</span><strong>{DEFAULT_VALVE_TIMING.exhaustOpensBbdc}° antes PMI</strong></div><div><span>Escape cierra</span><strong>{DEFAULT_VALVE_TIMING.exhaustClosesAtdc}° después PMS</strong></div><div><span>Avance de encendido</span><strong>{DEFAULT_VALVE_TIMING.sparkAdvanceBtdc}° antes PMS</strong></div><div><span>Alzada máxima</span><strong>{DEFAULT_VALVE_TIMING.intakeMaxLiftMm} / {DEFAULT_VALVE_TIMING.exhaustMaxLiftMm} mm</strong></div></div><p>Perfil de leva simplificado con apertura y cierre progresivos; valores orientativos, no corresponden a un motor comercial específico.</p></div>
-        <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO · CILINDRO 1 <span>MODELO 0D · 1 ZONA</span></div><div className="cylinder-state-grid">{cylinderStates.map((state,index)=><div key={index}><span>CILINDRO {index+1}</span><strong>{fmt(state.pressurePa/100000,2)} <small>bar</small></strong><small>{fmt(state.temperatureK-273.15,0)} °C</small></div>)}</div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.volumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.massKg*1000,3)} <small>g</small></strong></div><div><span>CAUDAL DE ADMISIÓN</span><strong>{fmt(thermodynamics.intakeMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>CAUDAL DE ESCAPE</span><strong>{fmt(thermodynamics.exhaustMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>FRACCIÓN QUEMADA</span><strong>{fmt(thermodynamics.burnedFraction*100,1)} <small>%</small></strong></div><div><span>LIBERACIÓN DE CALOR</span><strong>{fmt(thermodynamics.heatReleaseRateW/1000,2)} <small>kW</small></strong></div><div><span>PAR INDICADO INSTANTÁNEO</span><strong>{fmt(thermodynamics.indicatedTorqueNm,1)} <small>Nm</small></strong></div><div><span>POTENCIA INDICADA INSTANTÁNEA</span><strong>{fmt(thermodynamics.indicatedPowerW/1000,2)} <small>kW</small></strong></div></div><p>Modelo 0D de masa y energía: flujo compresible por válvulas con estrangulamiento, calor liberado con ley Wiebe y pérdidas térmicas a paredes. Los resultados son estimaciones didácticas, no datos de un motor calibrado ni CFD.</p></div>
+        <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO · CILINDRO 1 <span>MODELO 0D · 1 ZONA</span></div><div className="cylinder-state-grid">{cylinderStates.map((state,index)=><div key={index}><span>CILINDRO {index+1}</span><strong>{fmt(state.pressurePa/100000,2)} <small>bar</small></strong><small>{fmt(state.temperatureK-273.15,0)} °C</small></div>)}</div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.volumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.massKg*1000,3)} <small>g</small></strong></div><div><span>CAUDAL DE ADMISIÓN</span><strong>{fmt(thermodynamics.intakeMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>CAUDAL DE ESCAPE</span><strong>{fmt(thermodynamics.exhaustMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>FRACCIÓN QUEMADA</span><strong>{fmt(thermodynamics.burnedFraction*100,1)} <small>%</small></strong></div><div><span>LIBERACIÓN DE CALOR</span><strong>{fmt(thermodynamics.heatReleaseRateW/1000,2)} <small>kW</small></strong></div><div><span>PAR INDICADO INSTANTÁNEO</span><strong>{fmt(thermodynamics.indicatedTorqueNm,1)} <small>Nm</small></strong></div><div><span>POTENCIA INDICADA INSTANTÁNEA</span><strong>{fmt(thermodynamics.indicatedPowerW/1000,2)} <small>kW</small></strong></div></div><p>Modelo 0D de masa y energía: flujo compresible por válvulas con estrangulamiento, calor liberado con ley Wiebe y pérdidas térmicas a paredes. Los resultados son estimaciones didácticas, no datos de un motor calibrado ni CFD.</p>
+          <div className="systems-card"><div className="timing-card-heading">SISTEMAS AUXILIARES <span>MODELO TÉRMICO LUMPED</span></div>
+            <div className="systems-grid">
+              <div><span>ACEITE · TEMPERATURA</span><strong>{fmt(systems.oilTemperatureC,1)} <small>°C</small></strong></div>
+              <div><span>ACEITE · PRESIÓN</span><strong>{fmt(systems.oilPressureBar,2)} <small>bar</small></strong></div>
+              <div><span>CAUDAL DE ACEITE</span><strong>{fmt(systems.oilFlowLPerMin,1)} <small>L/min</small></strong></div>
+              <div><span>REFRIGERANTE</span><strong>{fmt(systems.coolantTemperatureC,1)} <small>°C</small></strong></div>
+              <div><span>PRESIÓN REFRIGERANTE</span><strong>{fmt(systems.coolantPressureBar,2)} <small>bar</small></strong></div>
+              <div><span>CAUDAL REFRIGERANTE</span><strong>{fmt(systems.coolantFlowLPerMin,1)} <small>L/min</small></strong></div>
+              <div><span>TEMPERATURA DE TAPA</span><strong>{fmt(systems.headTemperatureC,1)} <small>°C</small></strong></div>
+              <div><span>TEMPERATURA DE ESCAPE</span><strong>{fmt(systems.exhaustTemperatureC,0)} <small>°C</small></strong></div>
+            </div>
+            <div className="system-alerts">
+              <span className={systems.lubricationWarning?"warning-state":"healthy-state"}>{systems.lubricationWarning?"⚠ PRESIÓN / PELÍCULA DE ACEITE BAJA":"✓ LUBRICACIÓN DENTRO DEL RANGO"}</span>
+              <span className={systems.overheating?"warning-state":"healthy-state"}>{systems.overheating?"⚠ TEMPERATURA EXCESIVA":"✓ REFRIGERACIÓN ESTABLE"}</span>
+              {mechanicalStates.some(state=>state.valveCollision)&&<span className="warning-state">⚠ LIMITADOR DE INTERFERENCIA ACTIVADO</span>}
+            </div>
+            <div className="derived-row"><span>Holgura mínima pistón-válvula</span><strong>{fmt(Math.min(...mechanicalStates.map(state=>state.minimumValveClearanceMm)),2)} mm</strong></div>
+            <div className="derived-row"><span>Alzada efectiva admisión / escape</span><strong>{fmt(mechanicalStates[0]!.intakeLiftActualMm,2)} / {fmt(mechanicalStates[0]!.exhaustLiftActualMm,2)} mm</strong></div>
+          </div></div>
       </section>
       <aside className="panel controls-panel">
         <div className="panel-header"><div><div className="panel-kicker">02 / CONFIGURACIÓN</div><h2>Dimensiones del motor</h2></div><span className="settings-icon">⚙</span></div>
@@ -201,7 +236,7 @@ function App() {
         </div>
       </aside>
     </div>
-    <footer className="disclaimer"><span>ALCANCE FÍSICO</span> Vista 3D interactiva con geometría cinemática, válvulas, árbol de levas, conductos y partículas de gas. El cilindro integra masa y energía con flujo compresible 0D, combustión finita tipo Wiebe, trabajo presión-volumen y pérdidas térmicas simplificadas. No resuelve turbulencia, química detallada, ondas acústicas ni CFD; los valores no sustituyen datos experimentales.</footer>
+    <footer className="disclaimer"><span>ALCANCE FÍSICO</span> Cinemática rígida con holguras y limitador de interferencia pistón-válvula; lubricación y refrigeración de parámetros concentrados; cilindros termodinámicos 0D. No es todavía un solucionador de contacto deformable, tribología EHL, CFD ni un modelo calibrado de un motor comercial.</footer>
   </main>;
 }
 
