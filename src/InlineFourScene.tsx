@@ -342,6 +342,7 @@ function InlineFourScene(props:Props){
    p.exhaust.forEach((v,j)=>{v.position.y=deck+.45-liftOut;p.exhaustSprings[j]!.scale.y=Math.max(.35,1-liftOut/.42);p.exhaustSprings[j]!.position.y=deck+.46-liftOut/2;});
    p.followers.forEach((f,j)=>{const lift=j<2?liftIn:liftOut;f.position.y=deck+.76-lift;});
    // Gas beads are driven by thermodynamic mass flow and are hidden when the valve is seated.
+   const gas=props.cylinderStates[i]!;
    const intakeRate=clamp(Math.abs(gas.intakeMassFlowKgPerS)/.035,0,1),exhaustRate=clamp(Math.abs(gas.exhaustMassFlowKgPerS)/.035,0,1);
    s.gasParticles[i]!.forEach((bead,index)=>{const intakePath=index<4,rate=intakePath?intakeRate:exhaustRate,open=intakePath?state.intakeLiftActualMm:state.exhaustLiftActualMm;const active=rate>.015&&open>.05;bead.visible=active;if(!active)return;const lane=index%4,progress=(((props.angle/720)*(intakePath?1:-1)+lane*.25)%1+1)%1;const start=intakePath?vec(-width*.50,deck-.04,z):vec(width*.50,deck-.04,z);const end=intakePath?vec(-bore*.28,deck+.02,z):vec(bore*.28,deck+.02,z);bead.position.lerpVectors(start,end,progress);bead.scale.setScalar(.55+rate*.8);});
   });
@@ -355,7 +356,7 @@ function InlineFourScene(props:Props){
   s.oilPumpGears.forEach((gear,index)=>{gear.rotation.z=(index===0?1:-1)*crankAngle*.5;});
   s.timingPulleys.forEach((pulley,index)=>{const center=index===1?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;pulley.rotation.z=index===0?-crankAngle:(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
   if(s.timingBeltMaterial.map)s.timingBeltMaterial.map.offset.x=-((props.angle%360)/360)*.24;
-  // The oil pump remains static until its drive gear train is modelled.
+  // Oil-pump gears follow the camshaft-driven pump shaft.
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
   s.metalMaterials[0]!.color.setHex(props.systems.headTemperatureC>180?0x9d5540:0x879599);
  },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems,props.starterActive]);
