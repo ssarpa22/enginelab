@@ -6,6 +6,7 @@ import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import type { CylinderMechanicalState, EngineSystemsState } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { calculateValveState } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { INLINE_FOUR_CRANK_PHASES_DEG, INLINE_FOUR_CYCLE_OFFSETS_DEG } from "../packages/simulation-core/src/mechanics/inline-four";
+import { createAdaptiveResolutionState, updateAdaptiveResolution } from "./rendering/adaptive-resolution";
 
 type CylinderTelemetry={pressurePa:number;temperatureK:number;burnedFraction:number;intakeFlowKgPerS:number;exhaustFlowKgPerS:number};
 type Props={geometry:EngineGeometry;angle:number;rpm:number;cylinderStates:CylinderTelemetry[];mechanics:CylinderMechanicalState[];systems:EngineSystemsState;sparkFlash:boolean};
@@ -28,9 +29,14 @@ export default function InlineFourScene(props:Props){
   const zAt=(i:number)=>(i-1.5)*spacing;
   const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(width*2.8,deck*.95,length*.9);
   let renderer:THREE.WebGLRenderer;
-  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});}catch{el.textContent="Este navegador no pudo iniciar WebGL.";return;}
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.35));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;el.appendChild(renderer.domElement);
+  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:"high-performance",stencil:false,depth:true,preserveDrawingBuffer:false});}catch{el.textContent="Este navegador no pudo iniciar WebGL.";return;}
+  const basePixelRatio=Math.min(window.devicePixelRatio||1,1.25);renderer.setPixelRatio(basePixelRatio);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;el.appendChild(renderer.domElement);
   const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.065;controls.target.set(0,deck*.45,0);controls.minDistance=5;controls.maxDistance=32;controls.maxPolarAngle=Math.PI*.84;
+  let resolution=createAdaptiveResolutionState(),interacting=false;
+  const applyRenderScale=(scale:number)=>{renderer.setPixelRatio(basePixelRatio*scale);renderer.setSize(Math.max(1,el.clientWidth),Math.max(300,el.clientHeight),false);};
+  const onInteractionStart=()=>{interacting=true;if(resolution.scale>.78){resolution={...resolution,scale:.78,lastAdjustmentMs:performance.now()};applyRenderScale(resolution.scale);}};
+  const onInteractionEnd=()=>{interacting=false;};
+  controls.addEventListener("start",onInteractionStart);controls.addEventListener("end",onInteractionEnd);
   scene.add(new THREE.HemisphereLight(0xd9e8e6,0x1b2427,2.1));
   const key=new THREE.DirectionalLight(0xffe4c4,3.2);key.position.set(7,deck+7,length*.6);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.camera.near=.5;key.shadow.camera.far=30;key.shadow.bias=-.00025;scene.add(key);
   const rim=new THREE.DirectionalLight(0x8aaeb0,1.8);rim.position.set(-width*2,deck*.7,-length*.7);scene.add(rim);
@@ -207,8 +213,11 @@ export default function InlineFourScene(props:Props){
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
   const state:SceneState={parts,intakeCurves,exhaustCurves,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingPulleys,oilPump:pump};live.current=state;
-  const render=()=>{controls.update();renderer.render(scene,camera);state.frame=requestAnimationFrame(render);};render();
-  return()=>{cancelAnimationFrame(state.frame);observer.disconnect();controls.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const materials=Array.isArray(o.material)?o.material:[o.material];materials.forEach(m=>m.dispose());}});renderer.dispose();renderer.domElement.remove();live.current=null;};
+  let previousFrameTime=performance.now();
+  const render=()=>{const now=performance.now(),frameMs=now-previousFrameTime;previousFrameTime=now;
+   const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;
+   controls.update();renderer.render(scene,camera);state.frame=requestAnimationFrame(render);};render();
+  return()=>{cancelAnimationFrame(state.frame);observer.disconnect();controls.removeEventListener("start",onInteractionStart);controls.removeEventListener("end",onInteractionEnd);controls.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const materials=Array.isArray(o.material)?o.material:[o.material];materials.forEach(m=>m.dispose());}});renderer.dispose();renderer.domElement.remove();live.current=null;};
  },[props.geometry]);
 
  useEffect(()=>{
