@@ -31,7 +31,7 @@ const wrapCycle = (angle: number) => ((angle % 720) + 720) % 720;
 
 /**
  * Maps a point on the cam profile to its four-stroke crank-cycle angle.
- * The lobe nose is at local profile angle 90° when its valve event is centred.
+ * The lobe nose is at local profile angle 270° (the underside facing the follower).
  */
 export function calculateCamLobeProfileCycleAngleDeg(
   profileAngleDeg: number,
@@ -41,7 +41,7 @@ export function calculateCamLobeProfileCycleAngleDeg(
   if (![profileAngleDeg, camCenterCycleDeg, cylinderOffsetDeg].every(Number.isFinite)) {
     throw new RangeError("Cam profile angles must be finite.");
   }
-  return wrapCycle(camCenterCycleDeg + 2 * (profileAngleDeg - 90) + cylinderOffsetDeg);
+  return wrapCycle(camCenterCycleDeg + 2 * (profileAngleDeg - 270) + cylinderOffsetDeg);
 }
 
 /**
@@ -58,7 +58,7 @@ export function calculateCamFollowerCycleAngleDeg(
   if (![camshaftAngleDeg, camCenterCycleDeg, cylinderOffsetDeg].every(Number.isFinite)) {
     throw new RangeError("Camshaft angles must be finite.");
   }
-  const localFollowerAngle = 90 + camshaftAngleDeg - camCenterCycleDeg / 2;
+  const localFollowerAngle = 270 + camshaftAngleDeg - camCenterCycleDeg / 2;
   return calculateCamLobeProfileCycleAngleDeg(localFollowerAngle, camCenterCycleDeg, cylinderOffsetDeg);
 }
 const smoothLift = (progress: number, maxLift: number) => maxLift * Math.sin(Math.PI * clamp(progress, 0, 1));
