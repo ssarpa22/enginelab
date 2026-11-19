@@ -83,3 +83,10 @@
 .cad-asset-host canvas{display:block;width:100%;height:100%;outline:none}
 .cad-asset-status{position:absolute;right:16px;bottom:14px;max-width:75%;padding:8px 11px;border:1px solid rgba(139,171,167,.18);border-radius:5px;background:rgba(9,16,18,.82);color:#9db6b1;font:600 9px/1.4 inherit;letter-spacing:.08em;pointer-events:none}
 @media(max-width:760px){.scene-view-switch{width:100%;justify-content:flex-start}.scene-view-switch button{padding:8px 9px;font-size:9px}.cad-asset-host{min-height:360px}}
+
+
+/* Starter controls: separate engine ignition from simulation playback. */
+.starter-button{display:flex;align-items:center;justify-content:center;gap:7px;min-width:124px;padding:10px 14px;border:1px solid #9b713e;border-radius:4px;background:linear-gradient(180deg,#4a3520,#2b2118);color:#ffd18b;font:700 10px var(--mono);letter-spacing:.09em;box-shadow:inset 0 1px #ffffff12,0 2px 10px #0005;transition:background .16s,border-color .16s,transform .16s}
+.starter-button:hover:not(:disabled){background:linear-gradient(180deg,#634725,#39291a);border-color:#e7ae62;transform:translateY(-1px)}
+.starter-button:disabled{opacity:.72;cursor:wait}
+.starter-button.starter-active{border-color:#75bfa8;background:linear-gradient(180deg,#21463b,#142b25);color:#c4f5df;box-shadow:0 0 18px #55c7a322}
