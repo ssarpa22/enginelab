@@ -32,6 +32,7 @@ export type EngineSystemsState = {
   coolantTemperatureC: number;
   coolantPressureBar: number;
   coolantFlowLPerMin: number;
+  coolantLevelL: number;
   headTemperatureC: number;
   exhaustTemperatureC: number;
   thermostatOpening: number;
@@ -56,6 +57,7 @@ export const INITIAL_ENGINE_SYSTEMS: EngineSystemsState = {
   coolantTemperatureC: 25,
   coolantPressureBar: 0,
   coolantFlowLPerMin: 0,
+  coolantLevelL: 6.2,
   headTemperatureC: 25,
   exhaustTemperatureC: 25,
   thermostatOpening: 0,
@@ -155,7 +157,7 @@ export function advanceEngineSystems(
   const exhaustTemperatureC=clamp(input.exhaustGasTemperatureC,ambient,1050);
   return {
     oilTemperatureC,oilPressureBar,oilFlowLPerMin,oilLevelL:previous.oilLevelL,
-    coolantTemperatureC,coolantPressureBar,coolantFlowLPerMin,headTemperatureC,
+    coolantTemperatureC,coolantPressureBar,coolantFlowLPerMin,coolantLevelL:previous.coolantLevelL,headTemperatureC,
     exhaustTemperatureC,thermostatOpening,radiatorHeatRejectionW,bearingFilmRatio,
     lubricationWarning,overheating:coolantTemperatureC>=112||headTemperatureC>=220
   };
