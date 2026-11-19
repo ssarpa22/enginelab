@@ -120,12 +120,20 @@ function App() {
   const valveState=calculateValveState(cycleAngle);
   const cylinderStates = useMemo(() => [0, 1, 2, 3].map(index => {
     const phase = getInlineFourCylinderPhase(cycleAngle % 360, cycleAngle, index);
-    return calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, effectiveRpm);
-  }), [geometry, cycleAngle, effectiveRpm]);
+    const state=calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, effectiveRpm);
+    return {
+      ...state,
+      pressurePa:state.pressurePa*(1-damage.misfireProbability*.65),
+      burnedFraction:state.burnedFraction*(1-damage.misfireProbability),
+      indicatedTorqueNm:state.indicatedTorqueNm*damage.powerFactor,
+      indicatedPowerW:state.indicatedPowerW*damage.powerFactor,
+      heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)
+    };
+  }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor]);
   const thermodynamics = cylinderStates[0]!;
   const mechanicalStates = useMemo(() => [0,1,2,3].map(index =>
-    calculateCylinderMechanics(geometry,cycleAngle%360,cycleAngle,index,effectiveRpm)
-  ),[geometry,cycleAngle,effectiveRpm]);
+    calculateCylinderMechanics(geometry,cycleAngle%360,cycleAngle,index,effectiveRpm,DEFAULT_VALVE_TIMING,damage.valveFloatSeverity,damage.thermalExpansionMm)
+  ),[geometry,cycleAngle,effectiveRpm,damage.valveFloatSeverity,damage.thermalExpansionMm]);
   const meanGasTemperature = cylinderStates.reduce((sum,state)=>sum+state.temperatureK,0)/cylinderStates.length;
   const meanBurn = cylinderStates.reduce((sum,state)=>sum+state.burnedFraction,0)/cylinderStates.length;
   systemInputRef.current = {
