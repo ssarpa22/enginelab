@@ -137,3 +137,30 @@ During intake and exhaust, the current implementation uses fixed boundary condit
 No fuel/air equivalence ratio, fuel chemistry, variable specific heats, dissociation, finite-rate combustion, Wiebe heat-release curve, wall heat transfer, blow-by, residual-gas fraction, pressure losses, intake/exhaust manifold dynamics, valve flow coefficients, turbocharging, or crankshaft work integration. The fixed heat input and polytropic exponents are adjustable reference assumptions, not calibrated values for a specific engine.
 
 The pressure and temperature outputs should therefore be labelled as a simplified model, not measured or validated engine data. Future refinements should introduce a finite-duration heat-release model and gas-exchange mass/energy balances before attempting torque, power, emissions, or performance predictions.
+
+
+## Quasi-steady intake and exhaust flow estimate
+
+The gas-exchange helper estimates valve flow from the valve-curtain area
+\(A=\pi D_v L_v\), a discharge coefficient, gas density, and a pressure
+difference using the orifice approximation
+\(\dot m=C_d A\sqrt{2\rho\Delta p}\). A small intake depression during
+the downstroke and exhaust overpressure during the upstroke are estimated
+from normalized piston speed. The UI reports separate intake and exhaust
+mass-flow estimates in g/s.
+
+This is deliberately a low-order teaching approximation. It does not solve
+compressible choking, transient manifold pressure waves, port geometry,
+valve flow coefficients as a function of lift, residual-gas transport,
+turbulence, or a coupled cylinder mass/energy balance. The animated gas
+particles communicate flow direction and valve activity; they are not
+individual CFD particles.
+
+## Real-time playback
+
+At 1.0x, crank angle advances at \(6\times RPM\) degrees per second, matching
+the configured crankshaft speed. The playback control scales simulation time
+from 0.1x to 1.0x without changing the configured RPM or the underlying
+mechanical/thermodynamic equations. The spark event is triggered when the
+simulation crosses the configured advance angle and receives a short visual
+hold so it remains visible at normal display frame rates.

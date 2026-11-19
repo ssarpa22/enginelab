@@ -20,3 +20,18 @@
 
 .thermo-card{margin:0 20px 18px;padding:13px 14px;background:linear-gradient(145deg,#1b2728,#141a1c);border:1px solid #354446;border-radius:5px}.thermo-values{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}.thermo-values>div{display:flex;flex-direction:column;gap:5px;padding:9px 0;border-top:1px solid #293638}.thermo-values span{color:#8e9b99;font:8px var(--mono);letter-spacing:.07em}.thermo-values strong{color:#e5ece9;font:600 20px var(--display)}.thermo-values small{color:#9ba8a6;font:10px var(--mono)}.thermo-card p{margin:8px 0 0;color:#84918f;font-size:9px;line-height:1.55}
 @media(max-width:620px){.thermo-card{margin:0 13px 15px;padding:11px}.thermo-values{gap:0 12px}.thermo-values strong{font-size:18px}}
+
+/* Real-time playback, gas exchange particles and combustion event */
+.transport-speed{width:min(270px,48%);margin-left:auto;display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 10px}
+.transport-speed label{display:flex;justify-content:space-between;align-items:center;grid-column:1/-1}
+.transport-speed label strong{color:var(--amber);font:10px var(--mono)}
+.transport-speed input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--mint)}
+.speed-endpoints{grid-column:1/-1;display:flex;justify-content:space-between;color:#778583;font:8px var(--mono)}
+.gas-particle{stroke:none;filter:drop-shadow(0 0 3px currentColor)}
+.intake-particle{fill:#9cf0d9;color:#61c6b0}
+.exhaust-particle{fill:#ffc477;color:#e9a34b}
+.spark-flash{transform-origin:330px 68px;animation:sparkBurst .095s ease-out both}
+.spark-flash circle{animation:sparkRing .095s ease-out both}
+@keyframes sparkBurst{0%{opacity:0;transform:scale(.25)}20%{opacity:1;transform:scale(1.25)}100%{opacity:.15;transform:scale(.7)}}
+@keyframes sparkRing{0%{opacity:0;transform:scale(.3)}25%{opacity:.9}100%{opacity:0;transform:scale(1.8)}}
+@media(max-width:620px){.transport-speed{width:100%;margin:8px 0 0;grid-template-columns:1fr auto}.transport-speed label{grid-column:1/-1}.transport-speed input[type=range]{grid-column:1/-1}.speed-endpoints{grid-column:1/-1}}

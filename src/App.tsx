@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createEngineGeometry, type EngineGeometry } from "../packages/simulation-core/src/geometry";
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { millimetresToMetres, metresToMillimetres } from "../packages/simulation-core/src/units";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { calculateCylinderThermodynamics } from "../packages/simulation-core/src/mechanics/cylinder-thermodynamics";
+import { calculateGasExchangeState } from "../packages/simulation-core/src/mechanics/gas-exchange";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, rpm: 1800 };
@@ -30,7 +31,7 @@ function phaseAt(angle: number): Phase {
   return "Exhaust";
 }
 
-function Mechanism({ geometry, angle }: { geometry: EngineGeometry; angle: number }) {
+function Mechanism({ geometry, angle, sparkFlash }: { geometry: EngineGeometry; angle: number; sparkFlash: boolean }) {
   const crankAngle = angle % 360 * Math.PI / 180;
   const phase = phaseAt(angle);
   const valveState = calculateValveState(angle);
@@ -38,7 +39,11 @@ function Mechanism({ geometry, angle }: { geometry: EngineGeometry; angle: numbe
   const exhaustOpen = valveState.exhaustOpen;
   const intakeValveY = 43 + valveState.intakeLiftMm * 1.45;
   const exhaustValveY = 43 + valveState.exhaustLiftMm * 1.45;
-  const spark = valveState.sparkActive;
+  const spark = sparkFlash || valveState.sparkActive;
+  const normalizedAngle = ((angle % 720) + 720) % 720;
+  const powerProgress = clamp((normalizedAngle - 360) / 135, 0, 1);
+  const intakeStrength = valveState.intakeLiftMm / DEFAULT_VALVE_TIMING.intakeMaxLiftMm;
+  const exhaustStrength = valveState.exhaustLiftMm / DEFAULT_VALVE_TIMING.exhaustMaxLiftMm;
   const scale = 130 / geometry.strokeM;
   const radius = geometry.crankRadiusM * scale;
   const rod = geometry.connectingRodLengthM * scale;
@@ -70,9 +75,9 @@ function Mechanism({ geometry, angle }: { geometry: EngineGeometry; angle: numbe
     <path d={`M ${exhaustX-12} ${exhaustValveY} L ${exhaustX+12} ${exhaustValveY}`} className="valve-head exhaust-valve"/>
     <path d={`M ${cx+3} 8 L ${cx+3} 50 L ${cx} 59 L ${cx-3} 50 L ${cx-3} 8 Z`} className="spark-plug"/>
     {spark&&<g className="spark-flash"><path d="M330 58 l-8 12 8-2-5 12 13-16-8 2 5-8z"/><circle cx="330" cy="68" r="17"/></g>}
-    {intakeOpen&&<path d="M220 38 C245 38 270 48 295 75" className="gas-flow intake-flow" markerEnd="url(#intakeArrow)"/>}
-    {exhaustOpen&&<path d="M365 75 C395 48 420 38 448 38" className="gas-flow exhaust-flow" markerEnd="url(#exhaustArrow)"/>}
-    {phase==="Power"&&<g className="combustion-glow"><ellipse cx={cx} cy={Math.max(85,pistonTop-10)} rx="42" ry="22"/><path d={`M ${cx-28} ${Math.max(85,pistonTop-7)} Q ${cx} ${Math.max(40,pistonTop-52)} ${cx+28} ${Math.max(85,pistonTop-7)}`}/></g>}
+    {intakeOpen&&<g opacity={0.35+intakeStrength*0.65}><path d="M220 38 C245 38 270 48 295 75" className="gas-flow intake-flow" markerEnd="url(#intakeArrow)"/>{[0,1,2,3,4].map(i=>{const t=(normalizedAngle*0.045+i*0.2)%1;return <circle key={`in-${i}`} cx={220+75*t} cy={38+37*t} r={2.2+intakeStrength} className="gas-particle intake-particle"/>;})}</g>}
+    {exhaustOpen&&<g opacity={0.35+exhaustStrength*0.65}><path d="M365 75 C395 48 420 38 448 38" className="gas-flow exhaust-flow" markerEnd="url(#exhaustArrow)"/>{[0,1,2,3,4].map(i=>{const t=(normalizedAngle*0.045+i*0.2)%1;return <circle key={`out-${i}`} cx={365+83*t} cy={75-37*t} r={2.2+exhaustStrength} className="gas-particle exhaust-particle"/>;})}</g>}
+    {phase==="Power"&&<g className="combustion-glow" opacity={1-powerProgress*.55}><ellipse cx={cx} cy={Math.max(85,pistonTop-10)} rx={25+powerProgress*42} ry={14+powerProgress*22}/><path d={`M ${cx-28-powerProgress*16} ${Math.max(85,pistonTop-7)} Q ${cx} ${Math.max(40,pistonTop-52-powerProgress*20)} ${cx+28+powerProgress*16} ${Math.max(85,pistonTop-7)}`}/></g>}
     <circle cx={cx} cy={cy} r={radius+14} className="crankcase"/><circle cx={cx} cy={cy} r={radius} className="crank-orbit"/>
     <path d={`M ${cx-78} 372 H ${cx+78}`} className="crank-base"/>
     <line x1={cx} y1={cy} x2={crankX} y2={crankY} className="crank-arm"/><line x1={cx} y1={cy} x2={crankX} y2={crankY} className="crank-highlight"/>
@@ -94,14 +99,17 @@ function Mechanism({ geometry, angle }: { geometry: EngineGeometry; angle: numbe
 function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
   const [cycleAngle,setCycleAngle]=useState(0);
+  const cycleAngleRef=useRef(0);
   const [running,setRunning]=useState(true);
-  const [visualRate,setVisualRate]=useState(0.5);
+  const [visualRate,setVisualRate]=useState(1);
+  const [sparkFlash,setSparkFlash]=useState(false);
   const geometry=useMemo(()=>geometryFor(setup),[setup]);
   const crankAngle=(cycleAngle%360)*Math.PI/180;
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
   const phase=phaseAt(cycleAngle);
   const valveState=calculateValveState(cycleAngle);
   const thermodynamics=calculateCylinderThermodynamics(geometry,cycleAngle);
+  const gasExchange=calculateGasExchangeState(geometry,cycleAngle,setup.rpm,thermodynamics.pressurePa,thermodynamics.temperatureK);
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
   const spark=valveState.sparkActive;
@@ -115,20 +123,30 @@ function App() {
   });
   useEffect(()=>{
     if(!running||setup.rpm===0)return;
-    let frame=0,previous=0;
+    let frame=0,previous=0,sparkTimer=0;
+    const sparkAngle=360-DEFAULT_VALVE_TIMING.sparkAdvanceBtdc;
     const tick=(time:number)=>{
       if(previous!==0){
         const dt=Math.min((time-previous)/1000,.05);
-        // Visual playback is intentionally independent from real RPM, so the cycle stays readable.
-        setCycleAngle(value=>(value+dt*90*visualRate)%720);
+        const advance=dt*setup.rpm*6*visualRate;
+        const from=((cycleAngleRef.current%720)+720)%720;
+        const distance=(sparkAngle-from+720)%720;
+        if(advance>0&&distance<=advance){
+          setSparkFlash(true);
+          window.clearTimeout(sparkTimer);
+          sparkTimer=window.setTimeout(()=>setSparkFlash(false),95);
+        }
+        const next=(from+advance)%720;
+        cycleAngleRef.current=next;
+        setCycleAngle(next);
       }
       previous=time;
       frame=requestAnimationFrame(tick);
     };
     frame=requestAnimationFrame(tick);
-    return ()=>cancelAnimationFrame(frame);
+    return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
   },[running,setup.rpm,visualRate]);
-  const reset=()=>{setSetup(INITIAL);setCycleAngle(0);setVisualRate(.5);setRunning(true);};
+  const reset=()=>{setSetup(INITIAL);cycleAngleRef.current=0;setCycleAngle(0);setVisualRate(1);setSparkFlash(false);setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
     Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
@@ -154,16 +172,16 @@ function App() {
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
         <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>Conjunto mecánico y distribución</h2></div><span className="panel-chip"><span className="status-dot"/> VISTA ANIMADA</span></div>
-        <div className="drawing-stage"><Mechanism geometry={geometry} angle={cycleAngle}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN Y BIELA</span><span><i className="legend-intake"/> ADMISIÓN</span><span><i className="legend-exhaust"/> ESCAPE</span><span><i className="legend-spark"/> CHISPA</span></div></div>
+        <div className="drawing-stage"><Mechanism geometry={geometry} angle={cycleAngle} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN Y BIELA</span><span><i className="legend-intake"/> ADMISIÓN</span><span><i className="legend-exhaust"/> ESCAPE</span><span><i className="legend-spark"/> CHISPA</span></div></div>
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div>
-          <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD VISUAL</label><select id="playback-speed" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}><option value="0.25">Muy lenta</option><option value="0.5">Lenta</option><option value="1">Normal</option></select></div>
+          <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD DE SIMULACIÓN <strong>{visualRate.toFixed(1)}x</strong></label><input id="playback-speed" type="range" min="0.1" max="1" step="0.1" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}/><span className="speed-endpoints">0.1x — 1.0x</span></div>
         </div>
-        <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{setRunning(false);setCycleAngle(Number(e.target.value));}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
-        <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p><div className="valve-live-state"><span className={intakeOpen?"is-open":"is-closed"}>ADMISIÓN: {intakeOpen?"ABIERTA":"CERRADA"} · {fmt(valveState.intakeLiftMm,1)} mm</span><span className={exhaustOpen?"is-open":"is-closed"}>ESCAPE: {exhaustOpen?"ABIERTO":"CERRADO"} · {fmt(valveState.exhaustLiftMm,1)} mm</span><span className={spark?"spark-live":""}>ENCENDIDO: {spark?"CHISPA":"EN ESPERA"}</span></div></div></div>
+        <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{const next=Number(e.target.value);setRunning(false);cycleAngleRef.current=next;setCycleAngle(next);}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
+        <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p><div className="valve-live-state"><span className={intakeOpen?"is-open":"is-closed"}>ADMISIÓN: {intakeOpen?"ABIERTA":"CERRADA"} · {fmt(valveState.intakeLiftMm,1)} mm</span><span className={exhaustOpen?"is-open":"is-closed"}>ESCAPE: {exhaustOpen?"ABIERTO":"CERRADO"} · {fmt(valveState.exhaustLiftMm,1)} mm</span><span className={spark?"spark-live":""}>ENCENDIDO: {spark?"CHISPA":"EN ESPERA"}</span><span>FLUJO: {intakeOpen?"ADMISIÓN":exhaustOpen?"GASES DE ESCAPE":"SIN INTERCAMBIO"}</span></div></div></div>
         <div className="timing-card"><div className="timing-card-heading">CALADO DE DISTRIBUCIÓN <span>REFERENCIA INICIAL</span></div><div className="timing-grid"><div><span>Admisión abre</span><strong>{DEFAULT_VALVE_TIMING.intakeOpensBtdc}° antes PMS</strong></div><div><span>Admisión cierra</span><strong>{DEFAULT_VALVE_TIMING.intakeClosesAbdc}° después PMI</strong></div><div><span>Escape abre</span><strong>{DEFAULT_VALVE_TIMING.exhaustOpensBbdc}° antes PMI</strong></div><div><span>Escape cierra</span><strong>{DEFAULT_VALVE_TIMING.exhaustClosesAtdc}° después PMS</strong></div><div><span>Avance de encendido</span><strong>{DEFAULT_VALVE_TIMING.sparkAdvanceBtdc}° antes PMS</strong></div><div><span>Alzada máxima</span><strong>{DEFAULT_VALVE_TIMING.intakeMaxLiftMm} / {DEFAULT_VALVE_TIMING.exhaustMaxLiftMm} mm</strong></div></div><p>Perfil de leva simplificado con apertura y cierre progresivos; valores orientativos, no corresponden a un motor comercial específico.</p></div>
-        <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO <span>MODELO 0D · 1 ZONA</span></div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.cylinderVolumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.trappedMassKg*1000,3)} <small>g</small></strong></div></div><p>Presión y temperatura calculadas con gas ideal, compresión/expansión politrópica y aporte de calor idealizado. No representa una medición ni una combustión química real.</p></div>
+        <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO <span>MODELO 0D · 1 ZONA</span></div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.cylinderVolumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.trappedMassKg*1000,3)} <small>g</small></strong></div><div><span>CAUDAL DE ADMISIÓN</span><strong>{fmt(gasExchange.intakeMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>CAUDAL DE ESCAPE</span><strong>{fmt(gasExchange.exhaustMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div></div><p>Caudales estimados con área de cortina de válvula y ecuación de orificio; presión y temperatura usan el modelo 0D simplificado. No es CFD ni una combustión química resuelta.</p></div>
       </section>
       <aside className="panel controls-panel">
         <div className="panel-header"><div><div className="panel-kicker">02 / CONFIGURACIÓN</div><h2>Dimensiones del motor</h2></div><span className="settings-icon">⚙</span></div>
@@ -178,7 +196,7 @@ function App() {
         </div>
       </aside>
     </div>
-    <footer className="disclaimer"><span>NOTA DEL MODELO</span> La animación representa un ciclo Otto idealizado de cuatro tiempos. La apertura de válvulas, el flujo de gases y la chispa son ilustrativos; todavía no se calculan turbulencia, combustión, presión ni temperatura reales.</footer>
+    <footer className="disclaimer"><span>NOTA DEL MODELO</span> A 1.0x el cigüeñal gira al régimen real configurado: 6 grados por segundo por cada RPM. El control reduce el tiempo de simulación hasta 0.1x. Los chorros de gases responden a la apertura de válvulas y la chispa se conserva visible; el flujo y la llama siguen siendo aproximaciones visuales, no CFD ni combustión química resuelta.</footer>
   </main>;
 }
 
