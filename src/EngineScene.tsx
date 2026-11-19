@@ -323,7 +323,7 @@ export default function EngineScene({
       renderer.domElement.remove();
       sceneRef.current = null;
     };
-  }, []);
+  }, [geometry]);
 
   useEffect(() => {
     const state = sceneRef.current;
