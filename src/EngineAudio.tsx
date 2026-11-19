@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { inlineFourBodyFrequencies, normalizeEngineLoad } from "./audio/engine-audio-model";
 
 type EngineMode = "off" | "cranking" | "running";
@@ -18,7 +18,7 @@ type AudioRig = {
 };
 
 /** Exhaust events are one-shot pressure pulses triggered by the simulated 180-degree firing intervals. */
-export default function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props) {
+function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props) {
   const rig = useRef<AudioRig | null>(null);
   const lastAngle = useRef<number | null>(null);
   const lastAudioTime = useRef<number | null>(null);
@@ -181,3 +181,5 @@ export default function EngineAudio({ rpm, running, load = .45, cycleAngle, engi
     </button>
   );
 }
+
+export default memo(EngineAudio);
