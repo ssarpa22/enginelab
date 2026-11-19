@@ -119,10 +119,10 @@ export function calculateCoupledCylinderState(
     const exhaustArea = Math.PI * geometry.boreM * config.exhaustValveDiameterRatio *
       (valve.exhaustLiftMm / 1000);
     const intakeFlowState = valve.intakeOpen
-      ? compressibleOrificeFlow(config.intakePressurePa, config.intakeTemperatureK, pressure, intakeArea, config)
+      ? compressibleOrificeFlow(config.intakePressurePa, config.intakeTemperatureK, pressure, temperature, intakeArea, config)
       : { kgPerS: 0, direction: 0 };
     const exhaustFlowState = valve.exhaustOpen
-      ? compressibleOrificeFlow(pressure, temperature, config.exhaustPressurePa, exhaustArea, config)
+      ? compressibleOrificeFlow(pressure, temperature, config.exhaustPressurePa, config.exhaustTemperatureK, exhaustArea, config)
       : { kgPerS: 0, direction: 0 };
     const intakeSigned = intakeFlowState.kgPerS * intakeFlowState.direction;
     const exhaustSigned = exhaustFlowState.kgPerS * exhaustFlowState.direction;
@@ -134,9 +134,9 @@ export function calculateCoupledCylinderState(
       ? intakeSigned * cp * config.intakeTemperatureK * dt
       : intakeSigned * cp * temperature * dt;
     const exhaustEnthalpy = exhaustSigned >= 0
-      ? exhaustSigned * cp * temperature * dt
-      : exhaustSigned * cp * config.exhaustTemperatureK * dt;
-    const deltaMass = (intakeSigned + exhaustSigned) * dt;
+      ? -exhaustSigned * cp * temperature * dt
+      : -exhaustSigned * cp * config.exhaustTemperatureK * dt;
+    const deltaMass = (intakeSigned - exhaustSigned) * dt;
     const nextMass = Math.max(mass * 0.08, mass + deltaMass);
     const currentInternalEnergy = mass * cv * temperature;
     const nextInternalEnergy = Math.max(1, currentInternalEnergy -
@@ -173,7 +173,7 @@ export function calculateCoupledCylinderState(
     massKg: mass,
     intakeMassFlowKgPerS: intakeFlow,
     exhaustMassFlowKgPerS: exhaustFlow,
-    netMassFlowKgPerS: intakeFlow + exhaustFlow,
+    netMassFlowKgPerS: intakeFlow - exhaustFlow,
     heatReleaseRateW: heatRate,
     burnedFraction: burned,
     indicatedTorqueNm: torque,
@@ -187,6 +187,7 @@ function compressibleOrificeFlow(
   upstreamPressure: number,
   upstreamTemperature: number,
   downstreamPressure: number,
+  downstreamTemperature: number,
   area: number,
   config: CoupledCylinderConfig
 ): FlowResult {
@@ -196,7 +197,7 @@ function compressibleOrificeFlow(
   const direction = upstreamPressure > downstreamPressure ? 1 : -1;
   const p0 = Math.max(upstreamPressure, downstreamPressure);
   const pBack = Math.min(upstreamPressure, downstreamPressure);
-  const t0 = direction > 0 ? upstreamTemperature : Math.max(120, upstreamTemperature);
+  const t0 = direction > 0 ? upstreamTemperature : Math.max(120, downstreamTemperature);
   const ratio = pBack / p0;
   const critical = (2 / (config.gamma + 1)) ** (config.gamma / (config.gamma - 1));
   let massFlux: number;
