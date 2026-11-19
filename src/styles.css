@@ -90,3 +90,14 @@
 .starter-button:hover:not(:disabled){background:linear-gradient(180deg,#634725,#39291a);border-color:#e7ae62;transform:translateY(-1px)}
 .starter-button:disabled{opacity:.72;cursor:wait}
 .starter-button.starter-active{border-color:#75bfa8;background:linear-gradient(180deg,#21463b,#142b25);color:#c4f5df;box-shadow:0 0 18px #55c7a322}
+
+/* Dedicated low-cost 2D gas-flow visualization; no gas particles in the WebGL engine scene. */
+.gas-flow-card{margin:14px 0 18px;padding:13px 14px;border:1px solid #354446;border-radius:5px;background:linear-gradient(145deg,#182326,#11191b);overflow:hidden}
+.gas-flow-diagram{display:block;width:100%;height:auto;min-height:150px;overflow:visible}
+.gas-hardware rect{fill:#263438;stroke:#718286;stroke-width:2}.gas-hardware path{fill:none;stroke:#65777a;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}.gas-hardware text{fill:#aebdb8;font:10px var(--mono);text-anchor:middle;letter-spacing:.05em}.gas-hardware .gas-device{fill:#3a484a;stroke:#b07a45}.gas-hardware .muffler-baffle{stroke:#91a1a1;stroke-width:3}.gas-hardware .tailpipe{fill:#9a6339;stroke:#e6ad69;stroke-width:2}
+.gas-intake-stream,.gas-exhaust-stream{fill:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:5 12}.gas-intake-stream{stroke:#71d0b4;animation:gasFlowDash 1.1s linear infinite}.gas-exhaust-stream{stroke:#e7a15b;stroke-width:5}.gas-exhaust-stream.flowing{animation:gasFlowDash .48s linear infinite}.gas-exhaust-particle{fill:#ffc27a;filter:drop-shadow(0 0 4px #e78b43);animation:gasParticleTravel 2s linear infinite}.gas-outlet-plume{fill:none;stroke:#d9a16c;stroke-width:3;stroke-linecap:round;animation:exhaustPulse .8s ease-in-out infinite alternate}.gas-caption{fill:#8fa19d;font:10px var(--mono);letter-spacing:.04em}
+.gas-flow-readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}.gas-flow-readouts>div{display:flex;flex-direction:column;gap:5px;padding:8px;border:1px solid #2e3c3e;background:#121b1d}.gas-flow-readouts span{color:#879895;font:8px var(--mono);letter-spacing:.045em}.gas-flow-readouts strong{color:#e7ede8;font:600 15px var(--display)}.gas-flow-readouts small{color:#9aaba6;font:9px var(--mono)}.gas-flow-card p{margin:9px 0 0;color:#82918e;font-size:9px;line-height:1.5}
+@keyframes gasFlowDash{to{stroke-dashoffset:-34}}@keyframes gasParticleTravel{0%{transform:translateX(0);opacity:0}12%{opacity:1}88%{opacity:1}100%{transform:translateX(390px);opacity:0}}@keyframes exhaustPulse{from{transform:scale(.75);opacity:.3}to{transform:scale(1.12);opacity:.9}}
+@media(max-width:620px){.gas-flow-card{padding:10px}.gas-flow-readouts{grid-template-columns:1fr 1fr}.gas-flow-diagram{min-height:120px}.gas-hardware text,.gas-caption{font-size:9px}}
+
+@media(prefers-reduced-motion:reduce){.gas-intake-stream,.gas-exhaust-stream,.gas-exhaust-particle,.gas-outlet-plume{animation:none!important}}
