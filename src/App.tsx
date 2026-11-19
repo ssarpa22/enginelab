@@ -3,11 +3,11 @@ import { createEngineGeometry, type EngineGeometry } from "../packages/simulatio
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { millimetresToMetres, metresToMillimetres } from "../packages/simulation-core/src/units";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
-import { calculateCylinderThermodynamics } from "../packages/simulation-core/src/mechanics/cylinder-thermodynamics";
-import { calculateGasExchangeState } from "../packages/simulation-core/src/mechanics/gas-exchange";
+import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
+import EngineScene from "./EngineScene";
 
-type Setup = { boreMm: number; strokeMm: number; rodMm: number; rpm: number };
-const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, rpm: 1800 };
+type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
+const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: 10.5, rpm: 1800 };
 const TAU = Math.PI * 2;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const fmt = (n: number, digits = 1) => Number.isFinite(n) ? n.toFixed(digits) : "—";
@@ -108,8 +108,7 @@ function App() {
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
   const phase=phaseAt(cycleAngle);
   const valveState=calculateValveState(cycleAngle);
-  const thermodynamics=calculateCylinderThermodynamics(geometry,cycleAngle);
-  const gasExchange=calculateGasExchangeState(geometry,cycleAngle,setup.rpm,thermodynamics.pressurePa,thermodynamics.temperatureK);
+  const thermodynamics=useMemo(()=>calculateCoupledCylinderState(geometry,cycleAngle,setup.rpm),[geometry,cycleAngle,setup.rpm]);
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
   const spark=valveState.sparkActive;
@@ -156,11 +155,11 @@ function App() {
   return <main className="app-shell">
     <header className="topbar">
       <a className="brand" href="#" aria-label="EngineLab home"><span className="brand-mark"><span/><span/><span/></span><span>ENGINE<span className="brand-light">LAB</span></span></a>
-      <div className="topbar-center"><span className="status-dot"/> SIMULADOR DE MOTOR <span className="version-tag">PREVIEW 02</span></div>
+      <div className="topbar-center"><span className="status-dot"/> SIMULADOR DE MOTOR <span className="version-tag">3D PHYSICS PREVIEW</span></div>
       <div className="topbar-right"><span className="live-indicator">{running?"EN MARCHA":"EN PAUSA"}</span><span className="topbar-divider"/> CICLO 4T</div>
     </header>
     <section className="intro">
-      <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor de <em>cuatro tiempos.</em></h1><p>Observá cómo trabajan el pistón, las válvulas y la bujía durante un ciclo completo.</p></div>
+      <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor de <em>cuatro tiempos.</em></h1><p>Explorá el interior del motor en 3D y seguí el intercambio de gases, la combustión y el movimiento del conjunto mecánico.</p></div>
       <button className="reset-button" onClick={reset} type="button"><span>↺</span> REINICIAR</button>
     </section>
     <section className="metric-strip" aria-label="Datos principales del motor">
@@ -172,7 +171,7 @@ function App() {
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
         <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>Conjunto mecánico y distribución</h2></div><span className="panel-chip"><span className="status-dot"/> VISTA ANIMADA</span></div>
-        <div className="drawing-stage"><Mechanism geometry={geometry} angle={cycleAngle} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN Y BIELA</span><span><i className="legend-intake"/> ADMISIÓN</span><span><i className="legend-exhaust"/> ESCAPE</span><span><i className="legend-spark"/> CHISPA</span></div></div>
+        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} pressurePa={thermodynamics.pressurePa} burnedFraction={thermodynamics.burnedFraction} intakeFlowKgPerS={thermodynamics.intakeMassFlowKgPerS} exhaustFlowKgPerS={thermodynamics.exhaustMassFlowKgPerS} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div>
@@ -181,22 +180,23 @@ function App() {
         <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{const next=Number(e.target.value);setRunning(false);cycleAngleRef.current=next;setCycleAngle(next);}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
         <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p><div className="valve-live-state"><span className={intakeOpen?"is-open":"is-closed"}>ADMISIÓN: {intakeOpen?"ABIERTA":"CERRADA"} · {fmt(valveState.intakeLiftMm,1)} mm</span><span className={exhaustOpen?"is-open":"is-closed"}>ESCAPE: {exhaustOpen?"ABIERTO":"CERRADO"} · {fmt(valveState.exhaustLiftMm,1)} mm</span><span className={spark?"spark-live":""}>ENCENDIDO: {spark?"CHISPA":"EN ESPERA"}</span><span>FLUJO: {intakeOpen?"ADMISIÓN":exhaustOpen?"GASES DE ESCAPE":"SIN INTERCAMBIO"}</span></div></div></div>
         <div className="timing-card"><div className="timing-card-heading">CALADO DE DISTRIBUCIÓN <span>REFERENCIA INICIAL</span></div><div className="timing-grid"><div><span>Admisión abre</span><strong>{DEFAULT_VALVE_TIMING.intakeOpensBtdc}° antes PMS</strong></div><div><span>Admisión cierra</span><strong>{DEFAULT_VALVE_TIMING.intakeClosesAbdc}° después PMI</strong></div><div><span>Escape abre</span><strong>{DEFAULT_VALVE_TIMING.exhaustOpensBbdc}° antes PMI</strong></div><div><span>Escape cierra</span><strong>{DEFAULT_VALVE_TIMING.exhaustClosesAtdc}° después PMS</strong></div><div><span>Avance de encendido</span><strong>{DEFAULT_VALVE_TIMING.sparkAdvanceBtdc}° antes PMS</strong></div><div><span>Alzada máxima</span><strong>{DEFAULT_VALVE_TIMING.intakeMaxLiftMm} / {DEFAULT_VALVE_TIMING.exhaustMaxLiftMm} mm</strong></div></div><p>Perfil de leva simplificado con apertura y cierre progresivos; valores orientativos, no corresponden a un motor comercial específico.</p></div>
-        <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO <span>MODELO 0D · 1 ZONA</span></div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.cylinderVolumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.trappedMassKg*1000,3)} <small>g</small></strong></div><div><span>CAUDAL DE ADMISIÓN</span><strong>{fmt(gasExchange.intakeMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>CAUDAL DE ESCAPE</span><strong>{fmt(gasExchange.exhaustMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div></div><p>Caudales estimados con área de cortina de válvula y ecuación de orificio; presión y temperatura usan el modelo 0D simplificado. No es CFD ni una combustión química resuelta.</p></div>
+        <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO <span>MODELO 0D · 1 ZONA</span></div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.volumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.massKg*1000,3)} <small>g</small></strong></div><div><span>CAUDAL DE ADMISIÓN</span><strong>{fmt(thermodynamics.intakeMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>CAUDAL DE ESCAPE</span><strong>{fmt(thermodynamics.exhaustMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>FRACCIÓN QUEMADA</span><strong>{fmt(thermodynamics.burnedFraction*100,1)} <small>%</small></strong></div><div><span>LIBERACIÓN DE CALOR</span><strong>{fmt(thermodynamics.heatReleaseRateW/1000,2)} <small>kW</small></strong></div><div><span>PAR INDICADO INSTANTÁNEO</span><strong>{fmt(thermodynamics.indicatedTorqueNm,1)} <small>Nm</small></strong></div><div><span>POTENCIA INDICADA INSTANTÁNEA</span><strong>{fmt(thermodynamics.indicatedPowerW/1000,2)} <small>kW</small></strong></div></div><p>Modelo 0D de masa y energía: flujo compresible por válvulas con estrangulamiento, calor liberado con ley Wiebe y pérdidas térmicas a paredes. Los resultados son estimaciones didácticas, no datos de un motor calibrado ni CFD.</p></div>
       </section>
       <aside className="panel controls-panel">
         <div className="panel-header"><div><div className="panel-kicker">02 / CONFIGURACIÓN</div><h2>Dimensiones del motor</h2></div><span className="settings-icon">⚙</span></div>
         <div className="control-group"><div className="control-label-row"><label htmlFor="bore">DIÁMETRO DEL CILINDRO</label><output>{setup.boreMm} mm</output></div><input id="bore" type="range" min="60" max="120" step="1" value={setup.boreMm} onChange={e=>update("boreMm",Number(e.target.value))}/><div className="range-ends"><span>60 mm</span><span>120 mm</span></div></div>
         <div className="control-group"><div className="control-label-row"><label htmlFor="stroke">CARRERA</label><output>{setup.strokeMm} mm</output></div><input id="stroke" type="range" min="50" max="120" step="1" value={setup.strokeMm} onChange={e=>update("strokeMm",Number(e.target.value))}/><div className="range-ends"><span>50 mm</span><span>120 mm</span></div></div>
         <div className="control-group"><div className="control-label-row"><label htmlFor="rod">LARGO DE BIELA</label><output>{setup.rodMm} mm</output></div><input id="rod" type="range" min={rodMin} max="220" step="1" value={setup.rodMm} onChange={e=>update("rodMm",Number(e.target.value))}/><div className="range-ends"><span>{rodMin} mm</span><span>220 mm</span></div></div>
+        <div className="control-group"><div className="control-label-row"><label htmlFor="compression">RELACIÓN DE COMPRESIÓN</label><output>{fmt(setup.compressionRatio,1)} : 1</output></div><input id="compression" type="range" min="7" max="15" step="0.1" value={setup.compressionRatio} onChange={e=>update("compressionRatio",Number(e.target.value))}/><div className="range-ends"><span>7 : 1</span><span>15 : 1</span></div></div>
         <div className="control-group rpm-control"><div className="control-label-row"><label htmlFor="rpm">RÉGIMEN DEL MOTOR</label><output>{setup.rpm.toLocaleString("es-AR")} RPM</output></div><input id="rpm" type="range" min="0" max="8000" step="50" value={setup.rpm} onChange={e=>update("rpm",Number(e.target.value))}/><div className="range-ends"><span>0 RPM</span><span>8.000 RPM</span></div></div>
         <div className="derived-box"><div className="derived-heading">DATOS MECÁNICOS <span>CALCULADOS</span></div>
           <div className="derived-row"><span>Radio del cigüeñal</span><strong>{fmt(metresToMillimetres(geometry.crankRadiusM),1)} mm</strong></div>
           <div className="derived-row"><span>Relación biela / manivela</span><strong>{fmt(geometry.rodToCrankRatio,2)} : 1</strong></div>
-          <div className="derived-row"><span>Relación de compresión</span><strong>10,5 : 1 <small>referencia</small></strong></div>
+          <div className="derived-row"><span>Relación de compresión</span><strong>{fmt(geometry.compressionRatio,1)} : 1</strong></div>
         </div>
       </aside>
     </div>
-    <footer className="disclaimer"><span>NOTA DEL MODELO</span> A 1.0x el cigüeñal gira al régimen real configurado: 6 grados por segundo por cada RPM. El control reduce el tiempo de simulación hasta 0.1x. Los chorros de gases responden a la apertura de válvulas y la chispa se conserva visible; el flujo y la llama siguen siendo aproximaciones visuales, no CFD ni combustión química resuelta.</footer>
+    <footer className="disclaimer"><span>ALCANCE FÍSICO</span> Vista 3D interactiva con geometría cinemática, válvulas, árbol de levas, conductos y partículas de gas. El cilindro integra masa y energía con flujo compresible 0D, combustión finita tipo Wiebe, trabajo presión-volumen y pérdidas térmicas simplificadas. No resuelve turbulencia, química detallada, ondas acústicas ni CFD; los valores no sustituyen datos experimentales.</footer>
   </main>;
 }
 
