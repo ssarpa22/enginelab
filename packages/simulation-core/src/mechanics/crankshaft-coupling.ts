@@ -28,6 +28,8 @@ export interface CrankshaftDynamicState {
 }
 
 export const MAX_CRANKSHAFT_ANGLE_STEP_DEG = 4;
+/** Conservative preview cap while the rigid-body train is being validated. */
+export const MAX_CRANKSHAFT_RPM = 100;
 
 /**
  * Keeps crankshaft integration from jumping over large portions of a cycle at
@@ -144,7 +146,7 @@ export function stepCrankshaft(
   options: CrankshaftStepOptions
 ): CrankshaftDynamicState {
   const {
-    targetRpm,
+    targetRpm: requestedTargetRpm,
     dtSeconds,
     loadTorqueNm = 8,
     frictionTorqueNm = 2,
@@ -154,6 +156,7 @@ export function stepCrankshaft(
     externalTorqueNm = 0
   } = options;
 
+  const targetRpm = Math.min(requestedTargetRpm, MAX_CRANKSHAFT_RPM);
   for (const [name, value] of Object.entries({ cycleAngleDeg: state.cycleAngleDeg, rpm: state.rpm, indicatedGasTorqueNm, targetRpm, dtSeconds, loadTorqueNm, frictionTorqueNm, inertiaKgM2, governorGainNmPerRpm, maximumGasTorqueNm, externalTorqueNm })) {
     if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite.`);
   }
@@ -171,7 +174,7 @@ export function stepCrankshaft(
   const netTorqueNm = gasTorque + externalTorqueNm + governorTorque - loadTorqueNm - friction;
   const oldOmega = state.rpm * Math.PI / 30;
   const nextOmega = Math.max(0, oldOmega + (netTorqueNm / inertiaKgM2) * dtSeconds);
-  const nextRpm = Math.min(9_000, nextOmega * 30 / Math.PI);
+  const nextRpm = Math.min(MAX_CRANKSHAFT_RPM, nextOmega * 30 / Math.PI);
   const averageOmega = (oldOmega + nextOmega) / 2;
   const nextAngle = wrap(state.cycleAngleDeg + averageOmega * dtSeconds * 180 / Math.PI, 720);
 
