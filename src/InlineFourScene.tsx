@@ -145,7 +145,7 @@ export default function InlineFourScene(props:Props){
    p.piston.position.set(0,pinY-pistonTopOffset,z);
    const crankPin=vec(r*Math.sin(theta),r*Math.cos(theta),z),wristPin=vec(0,pinY,z);
    between(p.rod,wristPin,crankPin);
-   p.throw.rotation.z=-theta;
+   p.throw.rotation.z=0;
    const liftIn=state.intakeLiftActualMm/1000*(2.2/props.geometry.strokeM),liftOut=state.exhaustLiftActualMm/1000*(2.2/props.geometry.strokeM);
    p.intake.forEach((v,j)=>{v.position.y=deck+.45-liftIn;p.intakeSprings[j]!.scale.y=Math.max(.35,1-liftIn/.48);});
    p.exhaust.forEach((v,j)=>{v.position.y=deck+.45-liftOut;p.exhaustSprings[j]!.scale.y=Math.max(.35,1-liftOut/.48);});
