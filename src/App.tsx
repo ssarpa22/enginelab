@@ -9,7 +9,7 @@ import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mech
 import { calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState, type EngineSystemsInput } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { advanceEngineSimulation } from "../packages/simulation-core/src/mechanics/engine-simulation";
 import { INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simulation-core/src/mechanics/engine-damage";
-import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, MAX_CRANKSHAFT_RPM, stepCrankshaft, type CrankshaftDynamicState } from "../packages/simulation-core/src/mechanics/crankshaft-coupling";
+import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, stepCrankshaft, type CrankshaftDynamicState } from "../packages/simulation-core/src/mechanics/crankshaft-coupling";
 import EngineAudio from "./EngineAudio";
 import FourStroke2DView from "./FourStroke2DView";
 import { calculateStarterTorque, starterCanDisengage } from "../packages/simulation-core/src/mechanics/starter-system";
