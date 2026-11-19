@@ -143,7 +143,7 @@ export default function InlineFourScene(props:Props){
    const crown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.22,64),steel);crown.position.y=.20;crown.castShadow=true;piston.add(crown);
    const bowl=new THREE.Mesh(new THREE.CylinderGeometry(bore*.25,bore*.25,.025,32),mat(0x879294,.38,.8));bowl.position.y=.315;piston.add(bowl);
    for(const y of [.08,-.015,-.11]){const ring=new THREE.Mesh(new THREE.TorusGeometry(bore*.5-.00035*props.geometry.boreM*scale,.014,12,64),y===-.11?bronze:dark);ring.rotation.x=Math.PI/2;ring.position.y=y;piston.add(ring);}
-   const pin=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,bore*.78,24),bronze);pin.rotation.z=Math.PI/2;pin.position.y=-.04;piston.add(pin);
+   const pin=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,bore*.78,24),bronze);pin.rotation.z=Math.PI/2;pin.position.y=0;piston.add(pin);
    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.24,40,1,true),aluminium);skirt.position.y=-.17;piston.add(skirt);
    scene.add(piston);
    const rodProfile=new THREE.Shape();
@@ -236,7 +236,7 @@ export default function InlineFourScene(props:Props){
    const z=(i-1.5)*spacing,phase=(props.angle+(INLINE_FOUR_CYCLE_OFFSETS_DEG[i]??0))%720,theta=crankAngle+(INLINE_FOUR_CRANK_PHASES_DEG[i]??0)*Math.PI/180;
    const state=props.mechanics[i],gas=props.cylinderStates[i],kinematics=coupling.cylinders[i];if(!state||!gas||!kinematics)return;
    const pinY=rod+r-kinematics.pistonDisplacementM*(2.2/props.geometry.strokeM);
-   p.piston.position.set(0,pinY-pistonTopOffset,z);
+   p.piston.position.set(0,pinY,z);
    const crankPin=vec(r*Math.sin(theta),r*Math.cos(theta),z),wristPin=vec(0,pinY,z);
    between(p.rod,wristPin,crankPin);
    p.rodBigEnd.position.copy(crankPin);p.rodSmallEnd.position.copy(wristPin);
