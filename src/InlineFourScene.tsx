@@ -213,9 +213,9 @@ export default function InlineFourScene(props:Props){
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
   const state:SceneState={parts,intakeCurves,exhaustCurves,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingPulleys,oilPump:pump};live.current=state;
-  let previousFrameTime=performance.now(),lastQualityCheck=previousFrameTime;
+  let previousFrameTime=performance.now();
   const render=()=>{const now=performance.now(),frameMs=now-previousFrameTime;previousFrameTime=now;
-   if(now-lastQualityCheck>=500){const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;lastQualityCheck=now;}
+   const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;
    controls.update();renderer.render(scene,camera);state.frame=requestAnimationFrame(render);};render();
   return()=>{cancelAnimationFrame(state.frame);observer.disconnect();controls.removeEventListener("start",onInteractionStart);controls.removeEventListener("end",onInteractionEnd);controls.dispose();scene.traverse(o=>{if(o instanceof THREE.Mesh){o.geometry.dispose();const materials=Array.isArray(o.material)?o.material:[o.material];materials.forEach(m=>m.dispose());}});renderer.dispose();renderer.domElement.remove();live.current=null;};
  },[props.geometry]);
