@@ -4,17 +4,17 @@ import { calculateSliderCrankState } from "../packages/simulation-core/src/mecha
 import { millimetresToMetres, metresToMillimetres } from "../packages/simulation-core/src/units";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
-import EngineScene from "./EngineScene";
+import EngineScene from "./InlineFourScene";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
-const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: 10.5, rpm: 1800 };
+const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: s.compressionRatio, rpm: 1800 };
 const TAU = Math.PI * 2;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const fmt = (n: number, digits = 1) => Number.isFinite(n) ? n.toFixed(digits) : "—";
 
 function geometryFor(s: Setup): EngineGeometry {
   return createEngineGeometry({
-    cylinderCount: 1,
+    cylinderCount: 4,
     boreM: millimetresToMetres(s.boreMm),
     strokeM: millimetresToMetres(s.strokeMm),
     connectingRodLengthM: millimetresToMetres(s.rodMm),
@@ -156,10 +156,10 @@ function App() {
     <header className="topbar">
       <a className="brand" href="#" aria-label="EngineLab home"><span className="brand-mark"><span/><span/><span/></span><span>ENGINE<span className="brand-light">LAB</span></span></a>
       <div className="topbar-center"><span className="status-dot"/> SIMULADOR DE MOTOR <span className="version-tag">3D PHYSICS PREVIEW</span></div>
-      <div className="topbar-right"><span className="live-indicator">{running?"EN MARCHA":"EN PAUSA"}</span><span className="topbar-divider"/> CICLO 4T</div>
+      <div className="topbar-right"><span className="live-indicator">{running?"EN MARCHA":"EN PAUSA"}</span><span className="topbar-divider"/> L4 · 4T · 16V</div>
     </header>
     <section className="intro">
-      <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor de <em>cuatro tiempos.</em></h1><p>Explorá el interior del motor en 3D y seguí el intercambio de gases, la combustión y el movimiento del conjunto mecánico.</p></div>
+      <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor <em>L4 DOHC.</em></h1><p>Cuatro cilindros en línea, 16 válvulas, doble árbol de levas y distribución sincronizada. Explorá su mecánica interna en un corte 3D.</p></div>
       <button className="reset-button" onClick={reset} type="button"><span>↺</span> REINICIAR</button>
     </section>
     <section className="metric-strip" aria-label="Datos principales del motor">
