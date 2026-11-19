@@ -4,6 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { calculateValveState } from "../packages/simulation-core/src/mechanics/valve-timing";
+import { INLINE_FOUR_CRANK_PHASES_DEG, INLINE_FOUR_CYCLE_OFFSETS_DEG } from "../packages/simulation-core/src/mechanics/inline-four";
 
 type CylinderTelemetry = { pressurePa: number; burnedFraction: number; intakeFlowKgPerS: number; exhaustFlowKgPerS: number };
 type Props = { geometry: EngineGeometry; angle: number; pressurePa: number; burnedFraction: number; intakeFlowKgPerS: number; exhaustFlowKgPerS: number; cylinderStates: CylinderTelemetry[]; sparkFlash: boolean };
@@ -140,7 +141,7 @@ export default function InlineFourScene(props:Props) {
  useEffect(()=>{
   const s=live.current;if(!s)return;
   const stroke=2.05,cr=stroke/2,crankY=-1.48,deck=crankY+stroke+.18,headY=deck+.36,spacing=.98;
-  const mech=[0,Math.PI,Math.PI,0],offsets=[0,180,540,360],crankRad=((props.angle%360)+360)%360*Math.PI/180;
+  const mech=INLINE_FOUR_CRANK_PHASES_DEG.map(degrees=>degrees*Math.PI/180),offsets=INLINE_FOUR_CYCLE_OFFSETS_DEG,crankRad=((props.angle%360)+360)%360*Math.PI/180;
   s.parts.forEach((c,i)=>{
    const z=(i-1.5)*spacing,local=crankRad+mech[i],cycle=props.angle+offsets[i],v=calculateValveState(cycle),telemetry=props.cylinderStates[i];
    const k=calculateSliderCrankState(props.geometry,local,0),dy=k.pistonDisplacementM/props.geometry.strokeM*stroke,pistonY=deck-dy-.12;
@@ -153,11 +154,11 @@ export default function InlineFourScene(props:Props) {
    c.flame.scale.set(flameScale,flameScale*.72,flameScale);
    flame.opacity=localCycle>340&&localCycle<500?clamp(telemetry.burnedFraction*.9,.04,.68):0;c.flame.visible=flame.opacity>0;
    const inStrength=clamp(Math.abs(telemetry.intakeFlowKgPerS)*38,0,1),outStrength=clamp(Math.abs(telemetry.exhaustFlowKgPerS)*38,0,1);
-   c.inGas.forEach((p,j)=>{const t=(j/c.inGas.length+props.angle/720*1.6)%1;p.position.copy(s.inCurves[i].getPoint(telemetry.intakeFlowKgPerS>=0?t:1-t));p.visible=v.intakeLiftMm>.1&&inStrength>.02&&j<Math.ceil(inStrength*c.inGas.length);});
-   c.outGas.forEach((p,j)=>{const t=(j/c.outGas.length+props.angle/720*1.8)%1;p.position.copy(s.outCurves[i].getPoint(telemetry.exhaustFlowKgPerS>=0?t:1-t));p.visible=v.exhaustLiftMm>.1&&outStrength>.02&&j<Math.ceil(outStrength*c.outGas.length);});
+   c.inGas.forEach((p,j)=>{const t=(j/c.inGas.length+cycle/720*1.6)%1;p.position.copy(s.inCurves[i].getPoint(telemetry.intakeFlowKgPerS>=0?t:1-t));p.visible=v.intakeLiftMm>.1&&inStrength>.02&&j<Math.ceil(inStrength*c.inGas.length);});
+   c.outGas.forEach((p,j)=>{const t=(j/c.outGas.length+cycle/720*1.8)%1;p.position.copy(s.outCurves[i].getPoint(telemetry.exhaustFlowKgPerS>=0?t:1-t));p.visible=v.exhaustLiftMm>.1&&outStrength>.02&&j<Math.ceil(outStrength*c.outGas.length);});
    c.chamber.forEach((p,j)=>{const a=j*Math.PI*2/c.chamber.length+props.angle*.008,r=.06+(j%3)*.05;p.position.set(Math.cos(a)*r,deck+.42-(j%3)*.04,z+Math.sin(a)*r);p.visible=localCycle>180&&localCycle<540&&telemetry.burnedFraction<.98;});
   });
-  s.intakeCam.rotation.z=crankRad*.5;s.exhaustCam.rotation.z=crankRad*.5;s.crank.rotation.z=-crankRad;
+  s.intakeCam.rotation.z=-crankRad*.5;s.exhaustCam.rotation.z=-crankRad*.5;s.crank.rotation.z=-crankRad;
  },[props.geometry,props.angle,props.pressurePa,props.burnedFraction,props.intakeFlowKgPerS,props.exhaustFlowKgPerS,props.cylinderStates,props.sparkFlash]);
 
  return <div className="engine-3d-host engine-3d-inline-four" ref={host}>
