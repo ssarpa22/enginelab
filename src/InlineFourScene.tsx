@@ -10,14 +10,14 @@ import { INLINE_FOUR_CRANK_PHASES_DEG, INLINE_FOUR_CYCLE_OFFSETS_DEG } from "../
 import { createAdaptiveResolutionState, updateAdaptiveResolution } from "./rendering/adaptive-resolution";
 
 type CylinderTelemetry={pressurePa:number;temperatureK:number;burnedFraction:number;intakeFlowKgPerS:number;exhaustFlowKgPerS:number};
-type Props={geometry:EngineGeometry;angle:number;rpm:number;cylinderStates:CylinderTelemetry[];mechanics:CylinderMechanicalState[];systems:EngineSystemsState;sparkFlash:boolean};
+type Props={geometry:EngineGeometry;angle:number;rpm:number;cylinderStates:CylinderTelemetry[];mechanics:CylinderMechanicalState[];systems:EngineSystemsState;sparkFlash:boolean;starterActive:boolean};
 const vec=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;throw:THREE.Group;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];inGas:THREE.Mesh[];outGas:THREE.Mesh[];flame:THREE.Mesh;};
-type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Group[];oilPump:THREE.Group;};
+type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Group[];oilPump:THREE.Group;flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;};
 
 export default function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
@@ -104,7 +104,15 @@ export default function InlineFourScene(props:Props){
   for(const x of [-bore*.28,bore*.28]){
    const cam=new THREE.Group(),shaft=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,length*.94,28),bronze);shaft.rotation.x=Math.PI/2;cam.add(shaft);
    for(let i=0;i<4;i++)for(const dx of [-bore*.12,bore*.12]){
-    const lobe=new THREE.Mesh(new THREE.SphereGeometry(.16,20,16),steel);lobe.scale.set(.78,1.35,1.08);lobe.position.set(0,.12,zAt(i)+dx);cam.add(lobe);
+    const profile=new THREE.Shape();
+    for(let step=0;step<=72;step++){
+     const a=step/72*Math.PI*2,delta=Math.atan2(Math.sin(a-Math.PI/2),Math.cos(a-Math.PI/2));
+     const radius=.135+.13*Math.exp(-(delta*delta)/.19),x=Math.cos(a)*radius,y=Math.sin(a)*radius;
+     if(step===0)profile.moveTo(x,y);else profile.lineTo(x,y);
+    }
+    profile.closePath();
+    const lobeGeometry=new THREE.ExtrudeGeometry(profile,{depth:.14,steps:1,bevelEnabled:true,bevelSegments:3,bevelThickness:.018,bevelSize:.012});lobeGeometry.translate(0,0,-.07);
+    const lobe=new THREE.Mesh(lobeGeometry,steel);lobe.position.set(0,0,zAt(i)+dx);lobe.castShadow=true;cam.add(lobe);
    }
    for(let i=0;i<5;i++){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.16,20),dark);cap.rotation.x=Math.PI/2;cap.position.z=-length*.43+i*length*.215;cam.add(cap);}
    cam.position.set(x,deck+.91,0);scene.add(cam);cams.push(cam);
@@ -124,6 +132,22 @@ export default function InlineFourScene(props:Props){
    crank.add(t);throws.push(t);
   }
   scene.add(crank);
+  // Flywheel and ring gear share the crankshaft axis; the starter pinion engages only while cranking.
+  const flywheel=new THREE.Group();
+  const flywheelDisc=new THREE.Mesh(new THREE.CylinderGeometry(.57,.57,.18,64),forged);flywheelDisc.rotation.x=Math.PI/2;flywheel.add(flywheelDisc);
+  const flywheelHub=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.24,40),steel);flywheelHub.rotation.x=Math.PI/2;flywheel.add(flywheelHub);
+  const ringGear=new THREE.Mesh(new THREE.TorusGeometry(.61,.055,12,96),bronze);flywheel.add(ringGear);
+  for(let tooth=0;tooth<56;tooth++){const a=tooth/56*Math.PI*2,gearTooth=new THREE.Mesh(new RoundedBoxGeometry(.075,.11,.16,3,.012),steel);gearTooth.position.set(Math.cos(a)*.655,Math.sin(a)*.655,0);gearTooth.rotation.z=a;flywheel.add(gearTooth);}
+  flywheel.position.set(0,0,length/2+.28);scene.add(flywheel);
+  const starterMotor=new THREE.Group();
+  const motorCan=new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.62,36),dark);motorCan.rotation.x=Math.PI/2;motorCan.position.set(.96,-.38,0);starterMotor.add(motorCan);
+  const motorEnd=new THREE.Mesh(new THREE.CylinderGeometry(.205,.205,.12,36),forged);motorEnd.rotation.x=Math.PI/2;motorEnd.position.set(.96,-.38,-.32);starterMotor.add(motorEnd);
+  const solenoid=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.42,28),bronze);solenoid.rotation.x=Math.PI/2;solenoid.position.set(1.18,-.16,.02);starterMotor.add(solenoid);
+  starterMotor.position.z=length/2+.28;scene.add(starterMotor);
+  const starterPinion=new THREE.Group();
+  const pinionCore=new THREE.Mesh(new THREE.CylinderGeometry(.125,.125,.16,32),bronze);pinionCore.rotation.x=Math.PI/2;starterPinion.add(pinionCore);
+  for(let tooth=0;tooth<14;tooth++){const a=tooth/14*Math.PI*2,gearTooth=new THREE.Mesh(new RoundedBoxGeometry(.065,.07,.14,3,.01),steel);gearTooth.position.set(Math.cos(a)*.145,Math.sin(a)*.145,0);gearTooth.rotation.z=a;starterPinion.add(gearTooth);}
+  starterPinion.position.set(.96,0,length/2+.28);scene.add(starterPinion);
   // Front timing drive: toothed belt/pulleys are mechanically linked to crank and half-speed cams.
   const timing=new THREE.Group(),timingPulleys:THREE.Group[]=[],pulleyPositions=[[0,crankY,.34],[-bore*.28,deck+.91,.42],[bore*.28,deck+.91,.42]] as [number,number,number][];
   for(const [x,y,rad] of pulleyPositions){
@@ -154,13 +178,14 @@ export default function InlineFourScene(props:Props){
    const rodSmallEnd=new THREE.Mesh(new THREE.TorusGeometry(.105,.032,14,36),bronze);rodSmallEnd.castShadow=true;scene.add(rodSmallEnd);
    const intake:THREE.Group[]=[],exhaust:THREE.Group[]=[],intakeSprings:THREE.Mesh[]=[],exhaustSprings:THREE.Mesh[]=[],followers:THREE.Mesh[]=[];
    const makeValve=(x:number,zz:number,color:number)=>{
-    const g=new THREE.Group(),stem=new THREE.Mesh(new THREE.CylinderGeometry(.027,.027,.58,20),steel);stem.position.y=-.12;g.add(stem);
-    const valveProfile=[new THREE.Vector2(0,-.49),new THREE.Vector2(.045,-.49),new THREE.Vector2(.075,-.465),new THREE.Vector2(.095,-.43),new THREE.Vector2(.105,-.405),new THREE.Vector2(.095,-.38),new THREE.Vector2(0,-.38)];
-    const face=new THREE.Mesh(new THREE.LatheGeometry(valveProfile,36),mat(color,.2,.94));g.add(face);
-    const retainer=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.06,18),bronze);retainer.position.y=.22;g.add(retainer);
+    const g=new THREE.Group(),stem=new THREE.Mesh(new THREE.CylinderGeometry(.038,.038,.64,24),steel);stem.position.y=-.105;stem.castShadow=true;g.add(stem);
+    const valveProfile=[new THREE.Vector2(0,-.535),new THREE.Vector2(.19,-.535),new THREE.Vector2(.255,-.515),new THREE.Vector2(.30,-.475),new THREE.Vector2(.31,-.445),new THREE.Vector2(.275,-.415),new THREE.Vector2(.20,-.395),new THREE.Vector2(0,-.395)];
+    const face=new THREE.Mesh(new THREE.LatheGeometry(valveProfile,48),mat(color,.2,.94));face.castShadow=true;g.add(face);
+    const keeper=new THREE.Mesh(new THREE.CylinderGeometry(.065,.065,.075,20),steel);keeper.position.y=.205;g.add(keeper);
+    const retainer=new THREE.Mesh(new THREE.CylinderGeometry(.115,.115,.065,24),bronze);retainer.position.y=.255;g.add(retainer);
     g.position.set(x,deck+.45,zz);scene.add(g);return g;
    };
-   const makeSpring=(x:number,zz:number)=>{const points:THREE.Vector3[]=[];for(let k=0;k<=72;k++){const t=k/72,a=t*Math.PI*2*7;points.push(vec(Math.cos(a)*.075,-.21+t*.42,Math.sin(a)*.075));}const spring=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),180,.012,7,false),steel);spring.position.set(x,deck+.46,zz);scene.add(spring);return spring;};
+   const makeSpring=(x:number,zz:number)=>{const points:THREE.Vector3[]=[];for(let k=0;k<=96;k++){const t=k/96,a=t*Math.PI*2*9;points.push(vec(Math.cos(a)*.095,-.22+t*.44,Math.sin(a)*.095));}const spring=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),220,.016,8,false),steel);spring.position.set(x,deck+.46,zz);spring.castShadow=true;scene.add(spring);return spring;};
    for(const zz of [-bore*.12,bore*.12]){const x=-bore*.28;intake.push(makeValve(x,z+zz,0x70cdb6));intakeSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    for(const zz of [-bore*.12,bore*.12]){const x=bore*.28;exhaust.push(makeValve(x,z+zz,0xe4a05a));exhaustSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    const inCurve=makeTube(scene,[vec(-width*.52,deck+.04,z+.16),vec(-width*.58,deck-.08,z+.16),vec(-width*.66,deck-.25,z+.16),vec(-width*.72,deck-.35,z+.16)],.12,intakeMaterial);
@@ -218,7 +243,7 @@ export default function InlineFourScene(props:Props){
   const floor=new THREE.Mesh(new THREE.CircleGeometry(Math.max(length,width)*.85,96),mat(0x182225,.9,.1));floor.rotation.x=-Math.PI/2;floor.position.y=-1.05;floor.receiveShadow=true;scene.add(floor);
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
-  const state:SceneState={parts,intakeCurves,exhaustCurves,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingPulleys,oilPump:pump};live.current=state;
+  const state:SceneState={parts,intakeCurves,exhaustCurves,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingPulleys,oilPump:pump,flywheel,starterMotor,starterPinion};live.current=state;
   let previousFrameTime=performance.now();
   const render=()=>{const now=performance.now(),frameMs=now-previousFrameTime;previousFrameTime=now;
    const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;
@@ -251,7 +276,10 @@ export default function InlineFourScene(props:Props){
    p.outGas.forEach((dot,j)=>{const t=(j/p.outGas.length+props.angle/720*1.7)%1;dot.position.copy(s.exhaustCurves[i]!.getPoint(gas.exhaustFlowKgPerS>=0?t:1-t));dot.visible=exhaust&&j<Math.ceil(clamp(Math.abs(gas.exhaustFlowKgPerS)*55,0,1)*p.outGas.length);});
    const flame=p.flame.material as THREE.MeshStandardMaterial;const intensity=clamp(gas.burnedFraction,0,1);p.flame.scale.set(.12+intensity*.36,.1+intensity*.26,.12+intensity*.36);flame.opacity=phase>350&&phase<500?intensity*.62:0;p.flame.visible=flame.opacity>.01;
   });
-  s.crank.rotation.z=-crankAngle;s.cams.forEach(cam=>{cam.rotation.z=-coupling.camshaftAngleDeg*Math.PI/180;});
+  s.crank.rotation.z=-crankAngle;s.flywheel.rotation.z=-crankAngle;
+  s.starterPinion.position.x=props.starterActive?.79:.96;
+  s.starterPinion.rotation.z=props.starterActive?props.angle*Math.PI/180*4:0;
+  s.cams.forEach(cam=>{cam.rotation.z=-coupling.camshaftAngleDeg*Math.PI/180;});
   s.timingPulleys.forEach((pulley,index)=>{pulley.rotation.z=index===0?-crankAngle:-coupling.camshaftAngleDeg*Math.PI/180;});
   s.oilPump.rotation.z=-crankAngle*2;
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
@@ -260,6 +288,6 @@ export default function InlineFourScene(props:Props){
 
  return <div className="engine-3d-host engine-3d-inline-four" ref={host}>
   <div className="engine-3d-hint">ROTÁ · ZOOM · INSPECCIONÁ EL CONJUNTO</div>
-  <div className="engine-3d-axis">BLOQUE · CAMISAS · LUBRICACIÓN · REFRIGERACIÓN · DOHC</div>
+  <div className="engine-3d-axis">BLOQUE · VÁLVULAS · DISTRIBUCIÓN · VOLANTE · BURRO DE ARRANQUE</div>
  </div>;
 }
