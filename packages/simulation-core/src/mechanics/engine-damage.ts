@@ -85,7 +85,7 @@ export function advanceEngineDamage(
   ), 0, 100);
   const pistonScuffing = clamp(previous.pistonScuffing + dtSeconds * (
     oilStarvation ? (0.42 + load) * Math.max(1, rpm / 2200) :
-    input.headTemperatureC > 235 ? 0.45 : 0.0005
+    input.headTemperatureC > 235 ? 0.45 : 0.0005) + Math.max(0, thermalExpansionMm - 0.06) * 3
   ), 0, 100);
   const valveTrainWear = clamp(previous.valveTrainWear + dtSeconds * (
     valveFloatTarget > 0 ? valveFloatTarget * (0.08 + load * 0.18) : 0.0004
@@ -99,7 +99,7 @@ export function advanceEngineDamage(
 
   // Aluminum piston growth is approximated relative to a 20 °C reference.
   const thermalExpansionMm = clamp(
-    Math.max(0, input.headTemperatureC - 20) * 0.000023 * 86,
+    Math.max(0, input.headTemperatureC - 20) * 0.000012 * 86,
     0, 0.45
   );
   const valveFloatSeverity = approach(previous.valveFloatSeverity, valveFloatTarget, dtSeconds * 1.8);
