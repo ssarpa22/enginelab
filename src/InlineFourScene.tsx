@@ -6,7 +6,7 @@ import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import type { CylinderMechanicalState, EngineSystemsState } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { calculateInlineFourCrankCoupling } from "../packages/simulation-core/src/mechanics/crankshaft-coupling";
 import { INLINE_FOUR_CRANK_PHASES_DEG, INLINE_FOUR_CYCLE_OFFSETS_DEG } from "../packages/simulation-core/src/mechanics/inline-four";
-import { calculateCamLobeProfileCycleAngleDeg, calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
+import { calculateCamFollowerCycleAngleDeg, calculateCamLobeProfileCycleAngleDeg, calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { createAdaptiveResolutionState, updateAdaptiveResolution } from "./rendering/adaptive-resolution";
 
 type CylinderTelemetry={pressurePa:number;intakeMassFlowKgPerS:number;exhaustMassFlowKgPerS:number;burnedFraction:number;heatReleaseRateW:number;temperatureK:number};
@@ -338,7 +338,18 @@ function InlineFourScene(props:Props){
    const crankPin=vec(r*Math.sin(theta),r*Math.cos(theta),z),wristPin=vec(0,pinY,z);
    between(p.rod,wristPin,crankPin);
    p.rodBigEnd.position.copy(crankPin);p.rodSmallEnd.position.copy(wristPin);
-   const liftIn=state.intakeLiftActualMm/1000*(2.2/props.geometry.strokeM),liftOut=state.exhaustLiftActualMm/1000*(2.2/props.geometry.strokeM);
+   // The rotating cam surface is the valve-lift source. The mechanics model may
+   // reduce effective lift for float/wear, but it cannot command a valve independently
+   // of the lobe currently touching its bucket follower.
+   const cylinderOffset=INLINE_FOUR_CYCLE_OFFSETS_DEG[i]!;
+   const camIntakeCycle=calculateCamFollowerCycleAngleDeg(coupling.camshaftAngleDeg,INTAKE_CAM_CENTER,cylinderOffset);
+   const camExhaustCycle=calculateCamFollowerCycleAngleDeg(coupling.camshaftAngleDeg,EXHAUST_CAM_CENTER,cylinderOffset);
+   const camIntakeLift=calculateValveState(camIntakeCycle).intakeLiftMm;
+   const camExhaustLift=calculateValveState(camExhaustCycle).exhaustLiftMm;
+   const intakeEffectiveness=state.intakeLiftCommandMm>.001?clamp(state.intakeLiftActualMm/state.intakeLiftCommandMm,0,1):0;
+   const exhaustEffectiveness=state.exhaustLiftCommandMm>.001?clamp(state.exhaustLiftActualMm/state.exhaustLiftCommandMm,0,1):0;
+   const liftIn=camIntakeLift*intakeEffectiveness/1000*(2.2/props.geometry.strokeM);
+   const liftOut=camExhaustLift*exhaustEffectiveness/1000*(2.2/props.geometry.strokeM);
    p.intake.forEach((v,j)=>{v.position.y=deck+.45-liftIn;p.intakeSprings[j]!.scale.y=Math.max(.35,1-liftIn/.42);p.intakeSprings[j]!.position.y=deck+.46-liftIn/2;});
    p.exhaust.forEach((v,j)=>{v.position.y=deck+.45-liftOut;p.exhaustSprings[j]!.scale.y=Math.max(.35,1-liftOut/.42);p.exhaustSprings[j]!.position.y=deck+.46-liftOut/2;});
    p.followers.forEach((f,j)=>{const lift=j<2?liftIn:liftOut;f.position.y=deck+.76-lift;});
