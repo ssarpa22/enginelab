@@ -108,7 +108,9 @@ function Mechanism({ geometry, angle, sparkFlash }: { geometry: EngineGeometry; 
 function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
   const targetRpm=useDeferredValue(setup.rpm);
-  const [cycleAngle,setCycleAngle]=useState(0);\n  const cylinderModelStatesRef=useRef<(IncrementalCylinderState|null)[]>([null,null,null,null]);\n  const cylinderModelGeometryRef=useRef<EngineGeometry|null>(null);
+  const [cycleAngle,setCycleAngle]=useState(0);
+  const cylinderModelStatesRef=useRef<(IncrementalCylinderState|null)[]>([null,null,null,null]);
+  const cylinderModelGeometryRef=useRef<EngineGeometry|null>(null);
   const [shaftRpm,setShaftRpm]=useState(0);
   const crankshaftRef=useRef<CrankshaftDynamicState>({cycleAngleDeg:0,rpm:0});
   const gasTorqueRef=useRef(0);

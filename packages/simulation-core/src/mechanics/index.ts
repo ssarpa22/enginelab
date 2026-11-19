@@ -23,4 +23,6 @@ export { calculateInlineFourCrankCoupling, stepCrankshaft } from "./crankshaft-c
 export type { InlineFourCrankCoupling, CylinderCrankCoupling, CrankshaftDynamicState, CrankshaftStepOptions } from "./crankshaft-coupling";
 
 export { calculateStarterTorque, starterCanDisengage, STARTER_CUTOUT_RPM, STARTER_STALL_TORQUE_NM, STARTER_NO_LOAD_RPM } from "./starter-system";
-\nexport { createIncrementalCylinderState, advanceIncrementalCylinderState } from "./incremental-cylinder";\nexport type { IncrementalCylinderState } from "./incremental-cylinder";\n
+
+export { createIncrementalCylinderState, advanceIncrementalCylinderState } from "./incremental-cylinder";
+export type { IncrementalCylinderState } from "./incremental-cylinder";
