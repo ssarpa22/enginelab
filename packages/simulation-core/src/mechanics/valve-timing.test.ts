@@ -22,7 +22,7 @@ describe("four-stroke valve timing", () => {
 
   it("peaks each valve near the middle of its opening event", () => {
     expect(calculateValveState(100).intakeLiftMm).toBeCloseTo(DEFAULT_VALVE_TIMING.intakeMaxLiftMm, 1);
-    expect(calculateValveState(590).exhaustLiftMm).toBeCloseTo(DEFAULT_VALVE_TIMING.exhaustMaxLiftMm, 1);
+    expect(calculateValveState(612.5).exhaustLiftMm).toBeCloseTo(DEFAULT_VALVE_TIMING.exhaustMaxLiftMm, 1);
   });
 
   it("fires the spark before the power stroke at the configured advance", () => {
