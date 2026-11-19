@@ -1,8 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -10,8 +12,9 @@
     "skipLibCheck": true,
     "declaration": true,
     "sourceMap": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "noEmit": true
   },
-  "include": ["packages/**/*.ts", "vitest.config.ts"],
+  "include": ["src", "packages/**/*.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "coverage"]
 }
