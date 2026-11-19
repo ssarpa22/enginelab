@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { advanceEngineDamage, INITIAL_ENGINE_DAMAGE } from "./engine-damage";
 import { INITIAL_ENGINE_SYSTEMS } from "./engine-systems";
 
+const healthySystems = { ...INITIAL_ENGINE_SYSTEMS, oilPressureBar: 3.2, bearingFilmRatio: 1 };
 const healthy = {
   rpm: 2500, load: .55, oilPressureBar: 3.2, bearingFilmRatio: 1,
   oilTemperatureC: 95, coolantTemperatureC: 90, headTemperatureC: 105
@@ -11,7 +12,7 @@ describe("progressive engine damage", () => {
   it("keeps a healthy engine effectively undamaged during normal operation", () => {
     let damage = INITIAL_ENGINE_DAMAGE;
     for (let i = 0; i < 600; i++) {
-      damage = advanceEngineDamage(damage, INITIAL_ENGINE_SYSTEMS, healthy, .05);
+      damage = advanceEngineDamage(damage, healthySystems, healthy, .05);
     }
     expect(damage.bearingWear).toBeLessThan(1);
     expect(damage.pistonScuffing).toBeLessThan(1);
@@ -22,7 +23,7 @@ describe("progressive engine damage", () => {
   it("turns oil starvation into bearing wear, friction and power loss", () => {
     let damage = INITIAL_ENGINE_DAMAGE;
     for (let i = 0; i < 500; i++) {
-      damage = advanceEngineDamage(damage, INITIAL_ENGINE_SYSTEMS, {
+      damage = advanceEngineDamage(damage, healthySystems, {
         ...healthy, rpm: 3200, load: .8, oilPressureBar: .15, bearingFilmRatio: .08
       }, .1);
     }
