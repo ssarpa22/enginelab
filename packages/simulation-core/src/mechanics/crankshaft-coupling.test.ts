@@ -46,6 +46,19 @@ describe("pressure-coupled inline-four crankshaft", () => {
     expect(next.cycleAngleDeg).toBeGreaterThan(initial.cycleAngleDeg);
   });
 
+  it("allows the starter motor to turn a fuel-cut crankshaft from rest", () => {
+    const next = stepCrankshaft({ cycleAngleDeg: 0, rpm: 0 }, 0, {
+      targetRpm: 0,
+      dtSeconds: 0.02,
+      loadTorqueNm: 15,
+      frictionTorqueNm: 3,
+      inertiaKgM2: 0.42,
+      externalTorqueNm: 48
+    });
+    expect(next.rpm).toBeGreaterThan(0);
+    expect(next.cycleAngleDeg).toBeGreaterThan(0);
+  });
+
   it("coasts down when the speed target is zero and rejects unstable time steps", () => {
     const next = stepCrankshaft({ cycleAngleDeg: 20, rpm: 1_000 }, 100, { targetRpm: 0, dtSeconds: 0.01 });
     expect(next.rpm).toBeLessThan(1_000);

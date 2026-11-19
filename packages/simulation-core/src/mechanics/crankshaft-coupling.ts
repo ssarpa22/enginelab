@@ -35,6 +35,7 @@ export interface CrankshaftStepOptions {
   inertiaKgM2?: number;
   governorGainNmPerRpm?: number;
   maximumGasTorqueNm?: number;
+  externalTorqueNm?: number;
 }
 
 const wrap = (angle: number, period: number) => ((angle % period) + period) % period;
@@ -126,10 +127,11 @@ export function stepCrankshaft(
     frictionTorqueNm = 2,
     inertiaKgM2 = 0.32,
     governorGainNmPerRpm = 0.8,
-    maximumGasTorqueNm = 220
+    maximumGasTorqueNm = 220,
+    externalTorqueNm = 0
   } = options;
 
-  for (const [name, value] of Object.entries({ cycleAngleDeg: state.cycleAngleDeg, rpm: state.rpm, indicatedGasTorqueNm, targetRpm, dtSeconds, loadTorqueNm, frictionTorqueNm, inertiaKgM2, governorGainNmPerRpm, maximumGasTorqueNm })) {
+  for (const [name, value] of Object.entries({ cycleAngleDeg: state.cycleAngleDeg, rpm: state.rpm, indicatedGasTorqueNm, targetRpm, dtSeconds, loadTorqueNm, frictionTorqueNm, inertiaKgM2, governorGainNmPerRpm, maximumGasTorqueNm, externalTorqueNm })) {
     if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite.`);
   }
   if (state.rpm < 0 || targetRpm < 0 || dtSeconds < 0 || dtSeconds > 0.1 || loadTorqueNm < 0 || frictionTorqueNm < 0 || inertiaKgM2 <= 0 || governorGainNmPerRpm < 0 || maximumGasTorqueNm <= 0) {
@@ -143,7 +145,7 @@ export function stepCrankshaft(
     ? clamp((targetRpm - state.rpm) * governorGainNmPerRpm, -240, 240)
     : 0;
   const friction = state.rpm > 0 ? frictionTorqueNm : 0;
-  const netTorqueNm = gasTorque + governorTorque - loadTorqueNm - friction;
+  const netTorqueNm = gasTorque + externalTorqueNm + governorTorque - loadTorqueNm - friction;
   const oldOmega = state.rpm * Math.PI / 30;
   const nextOmega = Math.max(0, oldOmega + (netTorqueNm / inertiaKgM2) * dtSeconds);
   const nextRpm = Math.min(9_000, nextOmega * 30 / Math.PI);
