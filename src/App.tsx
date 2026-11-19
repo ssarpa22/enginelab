@@ -6,8 +6,8 @@ import { millimetresToMetres, metresToMillimetres } from "../packages/simulation
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, rpm: 1800 };
 const TAU = Math.PI * 2;
-const fmt = (n: number, digits = 1) => Number.isFinite(n) ? n.toFixed(digits) : "—";
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
+const fmt = (n: number, digits = 1) => Number.isFinite(n) ? n.toFixed(digits) : "—";
 
 function geometryFor(s: Setup): EngineGeometry {
   return createEngineGeometry({
@@ -20,170 +20,153 @@ function geometryFor(s: Setup): EngineGeometry {
   });
 }
 
+type Phase = "Intake" | "Compression" | "Power" | "Exhaust";
+function phaseAt(angle: number): Phase {
+  if (angle < 180) return "Intake";
+  if (angle < 360) return "Compression";
+  if (angle < 540) return "Power";
+  return "Exhaust";
+}
+
 function Mechanism({ geometry, angle }: { geometry: EngineGeometry; angle: number }) {
+  const crankAngle = angle % 360 * Math.PI / 180;
+  const phase = phaseAt(angle);
+  const intakeOpen = phase === "Intake";
+  const exhaustOpen = phase === "Exhaust";
+  const spark = angle >= 356 && angle <= 366;
   const scale = 130 / geometry.strokeM;
   const radius = geometry.crankRadiusM * scale;
   const rod = geometry.connectingRodLengthM * scale;
   const cx = 330, cy = 342;
-  const crankX = cx + radius * Math.sin(angle);
-  const crankY = cy - radius * Math.cos(angle);
-  const displacement = calculateSliderCrankState(geometry, angle, 0).pistonDisplacementM;
+  const crankX = cx + radius * Math.sin(crankAngle);
+  const crankY = cy - radius * Math.cos(crankAngle);
+  const displacement = calculateSliderCrankState(geometry, crankAngle, 0).pistonDisplacementM;
   const pistonY = cy - (rod + radius) + displacement * scale;
   const boreWidth = clamp(geometry.boreM * scale * 1.28, 82, 126);
   const pistonTop = pistonY - 17;
-  return <svg className="engine-drawing" viewBox="0 0 660 410" role="img" aria-label="Animated side view of a piston, connecting rod and crankshaft">
+  const headY = 24;
+  const intakeX = cx - 28, exhaustX = cx + 28;
+  return <svg className="engine-drawing" viewBox="0 0 660 410" role="img" aria-label="Four-stroke engine showing piston, valves, spark plug and gas flow">
     <defs>
       <linearGradient id="pistonMetal" x1="0" x2="1"><stop offset="0" stopColor="#84929a"/><stop offset=".48" stopColor="#e1e8e9"/><stop offset="1" stopColor="#68777f"/></linearGradient>
       <linearGradient id="rodMetal" x1="0" x2="1"><stop offset="0" stopColor="#59666d"/><stop offset=".5" stopColor="#c2cdd0"/><stop offset="1" stopColor="#536168"/></linearGradient>
       <radialGradient id="crankMetal"><stop offset="0" stopColor="#d5dedf"/><stop offset=".72" stopColor="#74838a"/><stop offset="1" stopColor="#3b484e"/></radialGradient>
+      <marker id="intakeArrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#61c6b0" strokeWidth="1.2"/></marker>
+      <marker id="exhaustArrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6" fill="none" stroke="#e9a34b" strokeWidth="1.2"/></marker>
     </defs>
-    <g className="drawing-grid">
-      {Array.from({length:13},(_,i)=><line key={i} x1={40+i*48} y1="18" x2={40+i*48} y2="390"/>)}
-      {Array.from({length:8},(_,i)=><line key={i} x1="34" y1={28+i*48} x2="626" y2={28+i*48}/>)}
-    </g>
+    <g className="drawing-grid">{Array.from({length:13},(_,i)=><line key={i} x1={40+i*48} y1="18" x2={40+i*48} y2="390"/>)}{Array.from({length:8},(_,i)=><line key={i} x1="34" y1={28+i*48} x2="626" y2={28+i*48}/>)}</g>
     <line x1={cx} y1="20" x2={cx} y2="365" className="centerline"/>
     <path d={`M ${cx-boreWidth/2-12} 24 V ${cy-76} M ${cx+boreWidth/2+12} 24 V ${cy-76}`} className="cylinder-wall"/>
     <path d={`M ${cx-boreWidth/2-12} 24 H ${cx+boreWidth/2+12}`} className="cylinder-head"/>
-    <circle cx={cx} cy={cy} r={radius+14} className="crankcase"/>
-    <circle cx={cx} cy={cy} r={radius} className="crank-orbit"/>
+    <rect x={cx-boreWidth/2-12} y={headY-5} width={boreWidth+24} height="28" rx="3" className="head-metal"/>
+    <path d={`M ${intakeX} 14 L ${intakeX} ${intakeOpen?61:43}`} className={`valve-stem intake-valve ${intakeOpen?"valve-open":""}`}/>
+    <path d={`M ${intakeX-12} ${intakeOpen?61:43} L ${intakeX+12} ${intakeOpen?61:43}`} className="valve-head intake-valve"/>
+    <path d={`M ${exhaustX} 14 L ${exhaustX} ${exhaustOpen?61:43}`} className={`valve-stem exhaust-valve ${exhaustOpen?"valve-open":""}`}/>
+    <path d={`M ${exhaustX-12} ${exhaustOpen?61:43} L ${exhaustX+12} ${exhaustOpen?61:43}`} className="valve-head exhaust-valve"/>
+    <path d={`M ${cx+3} 8 L ${cx+3} 50 L ${cx} 59 L ${cx-3} 50 L ${cx-3} 8 Z`} className="spark-plug"/>
+    {spark&&<g className="spark-flash"><path d="M330 58 l-8 12 8-2-5 12 13-16-8 2 5-8z"/><circle cx="330" cy="68" r="17"/></g>}
+    {intakeOpen&&<path d="M220 38 C245 38 270 48 295 75" className="gas-flow intake-flow" markerEnd="url(#intakeArrow)"/>}
+    {exhaustOpen&&<path d="M365 75 C395 48 420 38 448 38" className="gas-flow exhaust-flow" markerEnd="url(#exhaustArrow)"/>}
+    {phase==="Power"&&<g className="combustion-glow"><ellipse cx={cx} cy={Math.max(85,pistonTop-10)} rx="42" ry="22"/><path d={`M ${cx-28} ${Math.max(85,pistonTop-7)} Q ${cx} ${Math.max(40,pistonTop-52)} ${cx+28} ${Math.max(85,pistonTop-7)}`}/></g>}
+    <circle cx={cx} cy={cy} r={radius+14} className="crankcase"/><circle cx={cx} cy={cy} r={radius} className="crank-orbit"/>
     <path d={`M ${cx-78} 372 H ${cx+78}`} className="crank-base"/>
-    <line x1={cx} y1={cy} x2={crankX} y2={crankY} className="crank-arm"/>
-    <line x1={cx} y1={cy} x2={crankX} y2={crankY} className="crank-highlight"/>
-    <line x1={cx} y1={cy} x2={cx} y2={cy-radius} className="reference-arm"/>
-    <line x1={cx} y1={cy} x2={cx} y2={cy-radius-25} className="reference-dash"/>
-    <line x1={cx} y1={pistonY} x2={crankX} y2={crankY} className="connecting-rod-shadow"/>
-    <line x1={cx} y1={pistonY} x2={crankX} y2={crankY} className="connecting-rod"/>
+    <line x1={cx} y1={cy} x2={crankX} y2={crankY} className="crank-arm"/><line x1={cx} y1={cy} x2={crankX} y2={crankY} className="crank-highlight"/>
+    <line x1={cx} y1={pistonY} x2={crankX} y2={crankY} className="connecting-rod-shadow"/><line x1={cx} y1={pistonY} x2={crankX} y2={crankY} className="connecting-rod"/>
     <rect x={cx-boreWidth/2} y={pistonTop} width={boreWidth} height="34" rx="5" fill="url(#pistonMetal)" className="piston-body"/>
     <line x1={cx-boreWidth/2+5} y1={pistonTop+8} x2={cx+boreWidth/2-5} y2={pistonTop+8} className="piston-ring"/>
     <line x1={cx-boreWidth/2+5} y1={pistonTop+14} x2={cx+boreWidth/2-5} y2={pistonTop+14} className="piston-ring"/>
-    <circle cx={cx} cy={pistonY} r="10" className="wrist-pin"/>
-    <circle cx={crankX} cy={crankY} r="12" className="crank-pin"/>
-    <circle cx={cx} cy={cy} r="19" fill="url(#crankMetal)" className="main-bearing"/>
-    <circle cx={cx} cy={cy} r="6" className="bearing-center"/>
-    <path d={`M ${cx+30} ${cy-2} A 30 30 0 0 0 ${cx+28*Math.sin(angle)} ${cy-28*Math.cos(angle)}`} className="angle-arc"/>
-    <text x="468" y="58" className="diagram-label">PISTON</text>
-    <path d={`M 458 64 L ${cx+boreWidth/2} ${pistonY-2}`} className="leader"/>
-    <text x="470" y="208" className="diagram-label">CONNECTING ROD</text>
-    <path d={`M 462 214 L ${(cx+crankX)/2+8} ${(pistonY+crankY)/2}`} className="leader"/>
-    <text x="455" y="354" className="diagram-label">CRANKSHAFT</text>
-    <path d="M 448 348 L 350 342" className="leader"/>
-    <text x="54" y="55" className="diagram-small">TDC</text>
-    <text x="54" y="194" className="diagram-small">BDC</text>
-    <text x="54" y="382" className="diagram-small">KINEMATIC VIEW · NOT TO SCALE</text>
+    <circle cx={cx} cy={pistonY} r="10" className="wrist-pin"/><circle cx={crankX} cy={crankY} r="12" className="crank-pin"/>
+    <circle cx={cx} cy={cy} r="19" fill="url(#crankMetal)" className="main-bearing"/><circle cx={cx} cy={cy} r="6" className="bearing-center"/>
+    <text x="105" y="18" className="diagram-label intake-text">ADMISIÓN</text><text x="455" y="18" className="diagram-label exhaust-text">ESCAPE</text>
+    <text x="356" y="82" className="diagram-small">BUJÍA</text><path d="M352 78 L336 66" className="leader"/>
+    <text x="468" y="155" className="diagram-label">PISTÓN</text><path d={`M458 160 L${cx+boreWidth/2} ${pistonY-2}`} className="leader"/>
+    <text x="470" y="220" className="diagram-label">BIELA</text><path d={`M462 224 L${(cx+crankX)/2+8} ${(pistonY+crankY)/2}`} className="leader"/>
+    <text x="455" y="354" className="diagram-label">CIGÜEÑAL</text><path d="M448 348 L350 342" className="leader"/>
+    <text x="54" y="382" className="diagram-small">ESQUEMA DIDÁCTICO · NO A ESCALA</text>
   </svg>;
-}
-
-function MotionChart({ title, unit, values, color, min, max, marker }: {
-  title: string; unit: string; values: number[]; color: string; min: number; max: number; marker: number;
-}) {
-  const w=520,h=150,left=34,right=12,top=12,bottom=24,plotW=w-left-right,plotH=h-top-bottom;
-  const range=Math.max(max-min,.001);
-  const points=values.map((v,i)=>`${(left+i/(values.length-1)*plotW).toFixed(2)},${(top+(1-(v-min)/range)*plotH).toFixed(2)}`).join(" ");
-  const markerX=left+marker/360*plotW;
-  return <div className="chart-card">
-    <div className="chart-heading"><span>{title}</span><small>{unit}</small></div>
-    <svg viewBox={`0 0 ${w} ${h}`} className="chart-svg" role="img" aria-label={title}>
-      {[0,.5,1].map(f=><line key={f} x1={left} x2={w-right} y1={top+f*plotH} y2={top+f*plotH} className="chart-gridline"/>)}
-      <polyline points={points} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round"/>
-      <line x1={markerX} x2={markerX} y1={top} y2={h-bottom} className="chart-marker"/>
-      <text x={left} y={h-5} className="chart-axis">0°</text>
-      <text x={left+plotW/2} y={h-5} textAnchor="middle" className="chart-axis">180°</text>
-      <text x={w-right} y={h-5} textAnchor="end" className="chart-axis">360°</text>
-    </svg>
-  </div>;
 }
 
 function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
-  const [angle,setAngle]=useState(0);
+  const [cycleAngle,setCycleAngle]=useState(0);
   const [running,setRunning]=useState(true);
-  const [speedScale,setSpeedScale]=useState(1);
+  const [visualRate,setVisualRate]=useState(0.2);
   const geometry=useMemo(()=>geometryFor(setup),[setup]);
-  const current=useMemo(()=>calculateSliderCrankState(geometry,angle,setup.rpm),[geometry,angle,setup.rpm]);
-  const chart=useMemo(()=>{
-    const states=Array.from({length:181},(_,i)=>calculateSliderCrankState(geometry,i/180*TAU,setup.rpm));
-    const positions=states.map(s=>metresToMillimetres(s.pistonDisplacementM));
-    const velocities=states.map(s=>s.pistonVelocityMPerS);
-    return {positions,velocities,maxVelocity:Math.max(...velocities.map(Math.abs),1)};
-  },[geometry,setup.rpm]);
-
+  const crankAngle=(cycleAngle%360)*Math.PI/180;
+  const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
+  const phase=phaseAt(cycleAngle);
+  const displacement=metresToMillimetres(current.pistonDisplacementM);
+  const litres=geometry.totalDisplacementM3*1000;
+  const rodMin=Math.floor(setup.strokeMm/2)+5;
+  const update=(key:keyof Setup,value:number)=>setSetup(previous=>{
+    const next={...previous,[key]:value};
+    if(key==="strokeMm"&&next.rodMm<=value/2)next.rodMm=Math.floor(value/2)+5;
+    return next;
+  });
   useEffect(()=>{
     if(!running||setup.rpm===0)return;
     let frame=0,previous=0;
     const tick=(time:number)=>{
       if(previous!==0){
         const dt=Math.min((time-previous)/1000,.05);
-        setAngle(value=>(value+dt*setup.rpm*speedScale*TAU/60)%TAU);
+        // Deliberately slow the visual playback; RPM remains the engine's physical input.
+        setCycleAngle(value=>(value+dt*setup.rpm*6*visualRate)%720);
       }
       previous=time;
       frame=requestAnimationFrame(tick);
     };
     frame=requestAnimationFrame(tick);
     return ()=>cancelAnimationFrame(frame);
-  },[running,setup.rpm,speedScale]);
-
-  const update=(key:keyof Setup,value:number)=>{
-    setSetup(previous=>{
-      const next={...previous,[key]:value};
-      if(key==="strokeMm"&&next.rodMm<=value/2)next.rodMm=Math.floor(value/2)+5;
-      return next;
-    });
+  },[running,setup.rpm,visualRate]);
+  const reset=()=>{setSetup(INITIAL);setCycleAngle(0);setVisualRate(.2);setRunning(true);};
+  const phaseCopy:Record<Phase,string>={
+    Intake:"La válvula de admisión abre y entra la mezcla aire-combustible.",
+    Compression:"Las dos válvulas cierran; el pistón comprime la mezcla.",
+    Power:"La bujía enciende la mezcla y la expansión empuja el pistón.",
+    Exhaust:"La válvula de escape abre y salen los gases quemados."
   };
-  const reset=()=>{setSetup(INITIAL);setAngle(0);setSpeedScale(1);setRunning(true);};
-  const degrees=(angle*180/Math.PI+360)%360;
-  const displacement=metresToMillimetres(current.pistonDisplacementM);
-  const litres=geometry.totalDisplacementM3*1000;
-  const rodMin=Math.floor(setup.strokeMm/2)+5;
-
   return <main className="app-shell">
     <header className="topbar">
       <a className="brand" href="#" aria-label="EngineLab home"><span className="brand-mark"><span/><span/><span/></span><span>ENGINE<span className="brand-light">LAB</span></span></a>
-      <div className="topbar-center"><span className="status-dot"/> MECHANICAL PLAYGROUND <span className="version-tag">PREVIEW 01</span></div>
-      <div className="topbar-right"><span className="live-indicator">{running?"SIMULATION LIVE":"SIMULATION PAUSED"}</span><span className="topbar-divider"/> SI UNITS</div>
+      <div className="topbar-center"><span className="status-dot"/> SIMULADOR DE MOTOR <span className="version-tag">PREVIEW 02</span></div>
+      <div className="topbar-right"><span className="live-indicator">{running?"EN MARCHA":"EN PAUSA"}</span><span className="topbar-divider"/> CICLO 4T</div>
     </header>
     <section className="intro">
-      <div><div className="eyebrow">ENGINEERING WORKSPACE / 01</div><h1>Mechanical <em>playground.</em></h1><p>Explore the geometry and motion of a single-cylinder slider-crank mechanism.</p></div>
-      <button className="reset-button" onClick={reset} type="button"><span>↺</span> RESET SETUP</button>
+      <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor de <em>cuatro tiempos.</em></h1><p>Observá cómo trabajan el pistón, las válvulas y la bujía durante un ciclo completo.</p></div>
+      <button className="reset-button" onClick={reset} type="button"><span>↺</span> REINICIAR</button>
     </section>
-    <section className="metric-strip" aria-label="Live engine metrics">
-      <div className="metric"><span className="metric-label">DISPLACEMENT</span><strong>{fmt(litres,3)} <small>L</small></strong><span className="metric-note">single cylinder</span></div>
-      <div className="metric"><span className="metric-label">CRANK ANGLE</span><strong>{fmt(degrees,1)}<small>°</small></strong><span className="metric-note">from top dead centre</span></div>
-      <div className="metric"><span className="metric-label">PISTON POSITION</span><strong>{fmt(displacement,2)} <small>mm</small></strong><span className="metric-note">from TDC</span></div>
-      <div className="metric"><span className="metric-label">PISTON VELOCITY</span><strong>{fmt(current.pistonVelocityMPerS,2)} <small>m/s</small></strong><span className="metric-note">positive = downstroke</span></div>
+    <section className="metric-strip" aria-label="Datos principales del motor">
+      <div className="metric"><span className="metric-label">CILINDRADA</span><strong>{fmt(litres,3)} <small>L</small></strong></div>
+      <div className="metric"><span className="metric-label">RÉGIMEN CONFIGURADO</span><strong>{setup.rpm.toLocaleString("es-AR")} <small>RPM</small></strong></div>
+      <div className="metric"><span className="metric-label">RECORRIDO DEL PISTÓN</span><strong>{fmt(displacement,1)} <small>mm</small></strong><span className="metric-note">desde el PMS</span></div>
+      <div className="metric"><span className="metric-label">ETAPA ACTUAL</span><strong className="phase-metric">{phase.toUpperCase()}</strong><span className="metric-note">{Math.floor(cycleAngle)}° / 720°</span></div>
     </section>
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
-        <div className="panel-header"><div><div className="panel-kicker">01 / LIVE MECHANISM</div><h2>Slider-crank assembly</h2></div><span className="panel-chip"><span className="status-dot"/> IDEAL KINEMATICS</span></div>
-        <div className="drawing-stage"><Mechanism geometry={geometry} angle={angle}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTON</span><span><i className="legend-rod"/> CONNECTING ROD</span><span><i className="legend-crank"/> CRANK</span></div></div>
+        <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>Conjunto mecánico y distribución</h2></div><span className="panel-chip"><span className="status-dot"/> VISTA ANIMADA</span></div>
+        <div className="drawing-stage"><Mechanism geometry={geometry} angle={cycleAngle}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN Y BIELA</span><span><i className="legend-intake"/> ADMISIÓN</span><span><i className="legend-exhaust"/> ESCAPE</span><span><i className="legend-spark"/> CHISPA</span></div></div>
         <div className="transport">
-          <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pause simulation":"Run simulation"}>{running?"Ⅱ":"▶"}</button>
-          <div className="transport-readout"><strong>{fmt(degrees,1)}°</strong><span>CRANKSHAFT POSITION</span></div>
-          <div className="transport-speed"><label htmlFor="playback-speed">PLAYBACK</label><select id="playback-speed" value={speedScale} onChange={e=>setSpeedScale(Number(e.target.value))}><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div>
+          <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
+          <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div>
+          <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD VISUAL</label><select id="playback-speed" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}><option value="0.08">Muy lenta</option><option value="0.12">Lenta</option><option value="0.2">Normal</option><option value="0.3">Rápida</option></select></div>
         </div>
-        <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">CRANK ANGLE</label><output>{fmt(degrees,1)}°</output></div><input id="angle-control" type="range" min="0" max="360" step=".5" value={degrees} onChange={e=>{setRunning(false);setAngle(Number(e.target.value)*Math.PI/180);}}/><div className="range-ends"><span>0° · TDC</span><span>180° · BDC</span><span>360° · TDC</span></div></div>
+        <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{setRunning(false);setCycleAngle(Number(e.target.value));}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
+        <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p></div></div>
       </section>
       <aside className="panel controls-panel">
-        <div className="panel-header"><div><div className="panel-kicker">02 / ENGINE CONFIGURATION</div><h2>Geometry & speed</h2></div><span className="settings-icon">⚙</span></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="bore">BORE</label><output>{setup.boreMm} mm</output></div><input id="bore" type="range" min="60" max="120" step="1" value={setup.boreMm} onChange={e=>update("boreMm",Number(e.target.value))}/><div className="range-ends"><span>60 mm</span><span>120 mm</span></div></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="stroke">STROKE</label><output>{setup.strokeMm} mm</output></div><input id="stroke" type="range" min="50" max="120" step="1" value={setup.strokeMm} onChange={e=>update("strokeMm",Number(e.target.value))}/><div className="range-ends"><span>50 mm</span><span>120 mm</span></div></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="rod">CONNECTING ROD</label><output>{setup.rodMm} mm</output></div><input id="rod" type="range" min={rodMin} max="220" step="1" value={setup.rodMm} onChange={e=>update("rodMm",Number(e.target.value))}/><div className="range-ends"><span>{rodMin} mm</span><span>220 mm</span></div></div>
-        <div className="control-group rpm-control"><div className="control-label-row"><label htmlFor="rpm">ENGINE SPEED</label><output>{setup.rpm.toLocaleString("en-US")} RPM</output></div><input id="rpm" type="range" min="0" max="8000" step="50" value={setup.rpm} onChange={e=>update("rpm",Number(e.target.value))}/><div className="range-ends"><span>0 RPM</span><span>8,000 RPM</span></div></div>
-        <div className="derived-box"><div className="derived-heading">CALCULATED GEOMETRY <span>LIVE</span></div>
-          <div className="derived-row"><span>Crank radius</span><strong>{fmt(metresToMillimetres(geometry.crankRadiusM),1)} mm</strong></div>
-          <div className="derived-row"><span>Rod / crank ratio</span><strong>{fmt(geometry.rodToCrankRatio,2)} : 1</strong></div>
-          <div className="derived-row"><span>Clearance volume</span><strong>{fmt(geometry.clearanceVolumePerCylinderM3*1e6,1)} cm³</strong></div>
-          <div className="derived-row"><span>Compression ratio</span><strong>10.5 : 1 <small>fixed</small></strong></div>
+        <div className="panel-header"><div><div className="panel-kicker">02 / CONFIGURACIÓN</div><h2>Dimensiones del motor</h2></div><span className="settings-icon">⚙</span></div>
+        <div className="control-group"><div className="control-label-row"><label htmlFor="bore">DIÁMETRO DEL CILINDRO</label><output>{setup.boreMm} mm</output></div><input id="bore" type="range" min="60" max="120" step="1" value={setup.boreMm} onChange={e=>update("boreMm",Number(e.target.value))}/><div className="range-ends"><span>60 mm</span><span>120 mm</span></div></div>
+        <div className="control-group"><div className="control-label-row"><label htmlFor="stroke">CARRERA</label><output>{setup.strokeMm} mm</output></div><input id="stroke" type="range" min="50" max="120" step="1" value={setup.strokeMm} onChange={e=>update("strokeMm",Number(e.target.value))}/><div className="range-ends"><span>50 mm</span><span>120 mm</span></div></div>
+        <div className="control-group"><div className="control-label-row"><label htmlFor="rod">LARGO DE BIELA</label><output>{setup.rodMm} mm</output></div><input id="rod" type="range" min={rodMin} max="220" step="1" value={setup.rodMm} onChange={e=>update("rodMm",Number(e.target.value))}/><div className="range-ends"><span>{rodMin} mm</span><span>220 mm</span></div></div>
+        <div className="control-group rpm-control"><div className="control-label-row"><label htmlFor="rpm">RÉGIMEN DEL MOTOR</label><output>{setup.rpm.toLocaleString("es-AR")} RPM</output></div><input id="rpm" type="range" min="0" max="8000" step="50" value={setup.rpm} onChange={e=>update("rpm",Number(e.target.value))}/><div className="range-ends"><span>0 RPM</span><span>8.000 RPM</span></div></div>
+        <div className="derived-box"><div className="derived-heading">DATOS MECÁNICOS <span>CALCULADOS</span></div>
+          <div className="derived-row"><span>Radio del cigüeñal</span><strong>{fmt(metresToMillimetres(geometry.crankRadiusM),1)} mm</strong></div>
+          <div className="derived-row"><span>Relación biela / manivela</span><strong>{fmt(geometry.rodToCrankRatio,2)} : 1</strong></div>
+          <div className="derived-row"><span>Relación de compresión</span><strong>10,5 : 1 <small>referencia</small></strong></div>
         </div>
       </aside>
     </div>
-    <section className="panel charts-panel">
-      <div className="panel-header"><div><div className="panel-kicker">03 / MOTION ANALYSIS</div><h2>Piston motion over one revolution</h2></div><span className="chart-note">0° → 360° CRANK ANGLE</span></div>
-      <div className="charts-grid">
-        <MotionChart title="PISTON DISPLACEMENT" unit="mm" values={chart.positions} color="#e9a34b" min={0} max={setup.strokeMm} marker={degrees}/>
-        <MotionChart title="PISTON VELOCITY" unit="m/s" values={chart.velocities} color="#61c6b0" min={-chart.maxVelocity} max={chart.maxVelocity} marker={degrees}/>
-      </div>
-    </section>
-    <footer className="disclaimer"><span>ENGINEERING NOTE</span> This preview models ideal rigid slider-crank kinematics at constant crankshaft speed. It does not simulate combustion, pressure, torque, power, friction or thermal behaviour.</footer>
+    <footer className="disclaimer"><span>NOTA DEL MODELO</span> La animación representa un ciclo Otto idealizado de cuatro tiempos. La apertura de válvulas, el flujo de gases y la chispa son ilustrativos; todavía no se calculan turbulencia, combustión, presión ni temperatura reales.</footer>
   </main>;
 }
 
