@@ -192,7 +192,7 @@ function App() {
         const nextCrankshaft=nextSimulation.damage.seized?crankshaftRef.current:stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{targetRpm:setup.rpm,dtSeconds:dt,loadTorqueNm:22,frictionTorqueNm:3,inertiaKgM2:.42,governorGainNmPerRpm:.8,maximumGasTorqueNm:220});
         crankshaftRef.current=nextCrankshaft;
         const advance=nextSimulation.damage.seized?0:((nextCrankshaft.cycleAngleDeg-from+720)%720);
-        if(setup.rpm>0&&advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95);}
+        if(setup.rpm>0&&advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95/visualRate);}
         const next=nextCrankshaft.cycleAngleDeg;
         if(time-lastUiPaint>=33){setCycleAngle(next);setShaftRpm(nextCrankshaft.rpm);lastUiPaint=time;}
       }
