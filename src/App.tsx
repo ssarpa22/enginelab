@@ -5,6 +5,7 @@ import { millimetresToMetres, metresToMillimetres } from "../packages/simulation
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
 import EngineScene from "./InlineFourScene";
+import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: s.compressionRatio, rpm: 1800 };
@@ -18,7 +19,7 @@ function geometryFor(s: Setup): EngineGeometry {
     boreM: millimetresToMetres(s.boreMm),
     strokeM: millimetresToMetres(s.strokeMm),
     connectingRodLengthM: millimetresToMetres(s.rodMm),
-    compressionRatio: 10.5,
+    compressionRatio: s.compressionRatio,
     bankAngleRad: Math.PI / 2
   });
 }
@@ -108,7 +109,11 @@ function App() {
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
   const phase=phaseAt(cycleAngle);
   const valveState=calculateValveState(cycleAngle);
-  const thermodynamics=useMemo(()=>calculateCoupledCylinderState(geometry,cycleAngle,setup.rpm),[geometry,cycleAngle,setup.rpm]);
+  const cylinderStates = useMemo(() => [0, 1, 2, 3].map(index => {
+    const phase = getInlineFourCylinderPhase(cycleAngle % 360, cycleAngle, index);
+    return calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, setup.rpm);
+  }), [geometry, cycleAngle, setup.rpm]);
+  const thermodynamics = cylinderStates[0];
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
   const spark=valveState.sparkActive;
@@ -171,7 +176,7 @@ function App() {
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
         <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>Conjunto mecánico y distribución</h2></div><span className="panel-chip"><span className="status-dot"/> VISTA ANIMADA</span></div>
-        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} pressurePa={thermodynamics.pressurePa} burnedFraction={thermodynamics.burnedFraction} intakeFlowKgPerS={thermodynamics.intakeMassFlowKgPerS} exhaustFlowKgPerS={thermodynamics.exhaustMassFlowKgPerS} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
+        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} pressurePa={thermodynamics.pressurePa} burnedFraction={thermodynamics.burnedFraction} intakeFlowKgPerS={thermodynamics.intakeMassFlowKgPerS} exhaustFlowKgPerS={thermodynamics.exhaustMassFlowKgPerS} cylinderStates={cylinderStates.map(state => ({ pressurePa: state.pressurePa, burnedFraction: state.burnedFraction, intakeFlowKgPerS: state.intakeMassFlowKgPerS, exhaustFlowKgPerS: state.exhaustMassFlowKgPerS }))} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div>
