@@ -25,8 +25,8 @@ export function getInlineFourCylinderPhase(globalCrankAngleDeg: number, globalCy
   }
   return {
     cylinderNumber: (cylinderIndex + 1) as 1 | 2 | 3 | 4,
-    crankAngleDeg: wrap(globalCrankAngleDeg + INLINE_FOUR_CRANK_PHASES_DEG[cylinderIndex], 360),
-    cycleAngleDeg: wrap(globalCycleAngleDeg + INLINE_FOUR_CYCLE_OFFSETS_DEG[cylinderIndex], 720)
+    crankAngleDeg: wrap(globalCrankAngleDeg + INLINE_FOUR_CRANK_PHASES_DEG[cylinderIndex]!, 360),
+    cycleAngleDeg: wrap(globalCycleAngleDeg + INLINE_FOUR_CYCLE_OFFSETS_DEG[cylinderIndex]!, 720)
   };
 }
 
