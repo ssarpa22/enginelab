@@ -94,9 +94,12 @@ export function calculateCylinderMechanics(
   const exhaustActual=Math.min(valve.exhaustLiftMm,maxSafeLiftMm);
   const minimumValveClearanceMm=clearanceBeforeValveMm-Math.max(intakeActual,exhaustActual);
   const valveCollision=valve.intakeLiftMm>maxSafeLiftMm+1e-6||valve.exhaustLiftMm>maxSafeLiftMm+1e-6;
-  const skirtClearanceMm=0.055;
-  const radialRodEnvelopeMm=geometry.connectingRodLengthM*1000*.055;
-  const rodToBlockClearanceMm=Math.max(0,(geometry.boreM*1000*0.68-radialRodEnvelopeMm));
+  const skirtClearanceMm=geometry.boreM*1000*.0007;
+  const rodBigEndRadiusMm=geometry.boreM*1000*.10;
+  const crankcaseInnerHalfWidthMm=Math.max(geometry.boreM*1000*.775,
+    geometry.crankRadiusM*1000+rodBigEndRadiusMm+6);
+  const rodToBlockClearanceMm=crankcaseInnerHalfWidthMm-
+    geometry.crankRadiusM*1000-rodBigEndRadiusMm;
   const warning=valveCollision?"Interferencia pistón-válvula evitada por el limitador cinemático":
     rodToBlockClearanceMm<2?"Holgura reducida entre biela y bloque":null;
   return {
@@ -137,15 +140,16 @@ export function advanceEngineSystems(
   const thermostatOpening=clamp((previous.coolantTemperatureC-82)/12,0,1);
   const coolantFlowLPerMin=input.rpm===0?0:Math.min(95,input.rpm*.012);
   const coolantPressureBar=input.rpm===0?0:Math.min(1.45,.25+rpmFraction*.85);
-  const coolantHeatInput=1800+load*input.rpm*2.1;
+  const coolantHeatInput=input.rpm===0?0:1800+load*input.rpm*2.1;
   const radiatorHeatRejectionW=thermostatOpening*clamp(coolantFlowLPerMin/45,0,1.5)*
-    Math.max(0,previous.coolantTemperatureC-ambient)*95;
+    Math.max(0,previous.coolantTemperatureC-ambient)*95+
+    Math.max(0,previous.coolantTemperatureC-ambient)*1.8;
   const coolantDelta=(coolantHeatInput-radiatorHeatRejectionW)*dtSeconds/25000;
   const coolantTemperatureC=clamp(previous.coolantTemperatureC+coolantDelta,ambient,125);
   const headTemperatureC=clamp(previous.headTemperatureC+
     ((coolantTemperatureC+load*115)-previous.headTemperatureC)*dtSeconds/18,ambient,260);
-  const oilHeatInput=350+load*input.rpm*.42;
-  const oilCooling=(previous.oilTemperatureC-ambient)*(2.5+oilFlowLPerMin*.32);
+  const oilHeatInput=input.rpm===0?0:350+load*input.rpm*.42;
+  const oilCooling=(previous.oilTemperatureC-ambient)*(input.rpm===0?.35:2.5+oilFlowLPerMin*.32);
   const oilTemperatureC=clamp(previous.oilTemperatureC+
     (oilHeatInput-oilCooling)*dtSeconds/12500,ambient,190);
   const exhaustTemperatureC=clamp(input.exhaustGasTemperatureC,ambient,1050);
