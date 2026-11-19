@@ -148,6 +148,8 @@ function App() {
     const tick=(time:number)=>{
       if(previous!==0){
         const dt=Math.min((time-previous)/1000,.05);
+        systemsRef.current=advanceEngineSystems(systemsRef.current,systemInputRef.current,dt);
+        if(time-lastSystemPaint>120){setSystems({...systemsRef.current});lastSystemPaint=time;}
         const advance=dt*setup.rpm*6*visualRate;
         const from=((cycleAngleRef.current%720)+720)%720;
         const distance=(sparkAngle-from+720)%720;
@@ -192,7 +194,7 @@ function App() {
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
         <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>Conjunto mecánico y distribución</h2></div><span className="panel-chip"><span className="status-dot"/> VISTA ANIMADA</span></div>
-        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} rpm={setup.rpm} mechanics={mechanicalStates} systems={systems} pressurePa={thermodynamics.pressurePa} burnedFraction={thermodynamics.burnedFraction} intakeFlowKgPerS={thermodynamics.intakeMassFlowKgPerS} exhaustFlowKgPerS={thermodynamics.exhaustMassFlowKgPerS} cylinderStates={cylinderStates.map(state => ({ pressurePa: state.pressurePa, burnedFraction: state.burnedFraction, intakeFlowKgPerS: state.intakeMassFlowKgPerS, exhaustFlowKgPerS: state.exhaustMassFlowKgPerS }))} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
+        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} rpm={setup.rpm} mechanics={mechanicalStates} systems={systems} cylinderStates={cylinderStates.map(state => ({ pressurePa: state.pressurePa, temperatureK: state.temperatureK, burnedFraction: state.burnedFraction, intakeFlowKgPerS: state.intakeMassFlowKgPerS, exhaustFlowKgPerS: state.exhaustMassFlowKgPerS }))} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div><EngineAudio rpm={setup.rpm} running={running}/>
