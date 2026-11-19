@@ -5,7 +5,8 @@ import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { calculateValveState } from "../packages/simulation-core/src/mechanics/valve-timing";
 
-type Props = { geometry: EngineGeometry; angle: number; pressurePa: number; burnedFraction: number; intakeFlowKgPerS: number; exhaustFlowKgPerS: number; sparkFlash: boolean };
+type CylinderTelemetry = { pressurePa: number; burnedFraction: number; intakeFlowKgPerS: number; exhaustFlowKgPerS: number };
+type Props = { geometry: EngineGeometry; angle: number; pressurePa: number; burnedFraction: number; intakeFlowKgPerS: number; exhaustFlowKgPerS: number; cylinderStates: CylinderTelemetry[]; sparkFlash: boolean };
 const V = (x:number,y:number,z:number) => new THREE.Vector3(x,y,z);
 const clamp = (v:number,a:number,b:number) => Math.max(a,Math.min(b,v));
 const metal = (c:number,r=.36,m=.78) => new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
@@ -140,23 +141,23 @@ export default function InlineFourScene(props:Props) {
   const stroke=2.05,cr=stroke/2,crankY=-1.48,deck=crankY+stroke+.18,headY=deck+.36,spacing=.98;
   const mech=[0,Math.PI,Math.PI,0],offsets=[0,180,540,360],crankRad=((props.angle%360)+360)%360*Math.PI/180;
   s.parts.forEach((c,i)=>{
-   const z=(i-1.5)*spacing,local=crankRad+mech[i],cycle=props.angle+offsets[i],v=calculateValveState(cycle);
+   const z=(i-1.5)*spacing,local=crankRad+mech[i],cycle=props.angle+offsets[i],v=calculateValveState(cycle),telemetry=props.cylinderStates[i];
    const k=calculateSliderCrankState(props.geometry,local,0),dy=k.pistonDisplacementM/props.geometry.strokeM*stroke,pistonY=deck-dy-.12;
    c.piston.position.set(0,pistonY,z);between(c.rod,V(0,pistonY,z),V(cr*Math.sin(local),crankY+cr*Math.cos(local),z));c.throw.rotation.z=-local;
    c.intake.forEach(x=>{x.position.y=headY+.04-v.intakeLiftMm*.035;});
    c.exhaust.forEach(x=>{x.position.y=headY+.04-v.exhaustLiftMm*.035;});
    c.spark.visible=v.sparkActive||(props.sparkFlash&&i===0);
    const localCycle=((cycle%720)+720)%720,flame=c.flame.material as THREE.MeshStandardMaterial;
-   const flameScale=.12+clamp(props.burnedFraction,0,1)*.32+clamp((props.pressurePa-1e5)/9e6,0,1)*.12;
+   const flameScale=.12+clamp(telemetry.burnedFraction,0,1)*.32+clamp((telemetry.pressurePa-1e5)/9e6,0,1)*.12;
    c.flame.scale.set(flameScale,flameScale*.72,flameScale);
-   flame.opacity=localCycle>340&&localCycle<500?clamp(props.burnedFraction*.9,.04,.68):0;c.flame.visible=flame.opacity>0;
-   const inStrength=clamp(Math.abs(props.intakeFlowKgPerS)*38,0,1),outStrength=clamp(Math.abs(props.exhaustFlowKgPerS)*38,0,1);
-   c.inGas.forEach((p,j)=>{const t=(j/c.inGas.length+props.angle/720*1.6)%1;p.position.copy(s.inCurves[i].getPoint(props.intakeFlowKgPerS>=0?t:1-t));p.visible=v.intakeLiftMm>.1&&inStrength>.02&&j<Math.ceil(inStrength*c.inGas.length);});
-   c.outGas.forEach((p,j)=>{const t=(j/c.outGas.length+props.angle/720*1.8)%1;p.position.copy(s.outCurves[i].getPoint(props.exhaustFlowKgPerS>=0?t:1-t));p.visible=v.exhaustLiftMm>.1&&outStrength>.02&&j<Math.ceil(outStrength*c.outGas.length);});
+   flame.opacity=localCycle>340&&localCycle<500?clamp(telemetry.burnedFraction*.9,.04,.68):0;c.flame.visible=flame.opacity>0;
+   const inStrength=clamp(Math.abs(telemetry.intakeFlowKgPerS)*38,0,1),outStrength=clamp(Math.abs(telemetry.exhaustFlowKgPerS)*38,0,1);
+   c.inGas.forEach((p,j)=>{const t=(j/c.inGas.length+props.angle/720*1.6)%1;p.position.copy(s.inCurves[i].getPoint(telemetry.intakeFlowKgPerS>=0?t:1-t));p.visible=v.intakeLiftMm>.1&&inStrength>.02&&j<Math.ceil(inStrength*c.inGas.length);});
+   c.outGas.forEach((p,j)=>{const t=(j/c.outGas.length+props.angle/720*1.8)%1;p.position.copy(s.outCurves[i].getPoint(telemetry.exhaustFlowKgPerS>=0?t:1-t));p.visible=v.exhaustLiftMm>.1&&outStrength>.02&&j<Math.ceil(outStrength*c.outGas.length);});
    c.chamber.forEach((p,j)=>{const a=j*Math.PI*2/c.chamber.length+props.angle*.008,r=.06+(j%3)*.05;p.position.set(Math.cos(a)*r,deck+.42-(j%3)*.04,z+Math.sin(a)*r);p.visible=localCycle>180&&localCycle<540&&props.burnedFraction<.98;});
   });
   s.intakeCam.rotation.z=crankRad*.5;s.exhaustCam.rotation.z=crankRad*.5;s.crank.rotation.z=-crankRad;
- },[props.geometry,props.angle,props.pressurePa,props.burnedFraction,props.intakeFlowKgPerS,props.exhaustFlowKgPerS,props.sparkFlash]);
+ },[props.geometry,props.angle,props.pressurePa,props.burnedFraction,props.intakeFlowKgPerS,props.exhaustFlowKgPerS,props.cylinderStates,props.sparkFlash]);
 
  return <div className="engine-3d-host engine-3d-inline-four" ref={host}>
   <div className="engine-3d-hint">ROTÁ · ZOOM · INSPECCIONÁ EL CONJUNTO</div>
