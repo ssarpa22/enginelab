@@ -250,7 +250,7 @@ function App() {
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
   },[running,targetRpm,visualRate,engineMode]);
-  const reset=()=>{setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
+  const reset=()=>{cylinderModelStatesRef.current=[null,null,null,null];cylinderModelGeometryRef.current=null;setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
     Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
