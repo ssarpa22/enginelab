@@ -7,7 +7,7 @@ function GasFlowPanel({intakeFlowKgPerS,exhaustFlowKgPerS,exhaustTemperatureC,ex
  const exhaustIntensity=clamp(exhaust/.035,0,1),heat=clamp((exhaustTemperatureC-80)/800,0,1);
  const active=running&&exhaustIntensity>.015;
  return <section className="gas-flow-card" aria-label="Animación bidimensional del flujo de gases">
-  <div className="timing-card-heading">CIRCUITO DE GASES · VISTA 2D <span>FLUJO SEGÚN SIMULACIÓN</span></div>
+  <div className="timing-card-heading">CIRCUITO DE GASES · VISTA 2D <span>CICLO DIDÁCTICO INDEPENDIENTE</span></div>
   <svg className="gas-flow-diagram" viewBox="0 0 760 210" role="img" aria-label="Admisión, cilindros, colector, catalizador, silenciador y salida de escape">
    <defs><linearGradient id="muffler" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#536267"/><stop offset=".5" stopColor="#263338"/><stop offset="1" stopColor="#11191c"/></linearGradient></defs>
    <g className="gas-hardware">
@@ -25,7 +25,7 @@ function GasFlowPanel({intakeFlowKgPerS,exhaustFlowKgPerS,exhaustTemperatureC,ex
    <text x="18" y="174" className="gas-caption">CARGA FRESCA · {(intake*1000).toFixed(1)} g/s</text><text x="480" y="174" className="gas-caption">ESCAPE · {(exhaust*1000).toFixed(1)} g/s</text>
   </svg>
   <div className="gas-flow-readouts"><div><span>CAUDAL DE ESCAPE</span><strong>{(exhaust*1000).toFixed(2)} <small>g/s</small></strong></div><div><span>TEMPERATURA ESTIMADA</span><strong>{Math.round(exhaustTemperatureC)} <small>°C</small></strong></div><div><span>PRESIÓN DE DESCARGA</span><strong>{(exhaustPressurePa/1000).toFixed(1)} <small>kPa</small></strong></div><div><span>ESTADO DEL ESCAPE</span><strong>{active?"FLUYENDO":"SIN DESCARGA"}</strong></div></div>
-  <p>Esquema 2D de flujo agregado: la intensidad y la animación responden al caudal calculado. Catalizador, silenciador y salida son una representación funcional simplificada; no se resuelven acústica ni contrapresión calibrada.</p>
+  <p>Esquema 2D didáctico de flujo: la intensidad y la animación responden a la fase del ciclo 2D independiente. Catalizador, silenciador y salida son una representación funcional simplificada; no se resuelven acústica ni contrapresión calibrada.</p>
  </section>;
 }
 export default memo(GasFlowPanel);
