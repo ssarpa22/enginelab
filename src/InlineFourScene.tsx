@@ -99,7 +99,7 @@ export default function InlineFourScene(props:Props){
     const retainer=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.06,18),bronze);retainer.position.y=.22;g.add(retainer);
     g.position.set(x,deck+.45,zz);scene.add(g);return g;
    };
-   const makeSpring=(x:number,zz:number)=>{const points:THREE.Vector3[]=[];for(let k=0;k<=72;k++){const t=k/72,a=t*Math.PI*2*7;points.push(vec(x+Math.cos(a)*.075,deck+.25+t*.42,zz+Math.sin(a)*.075));}const spring=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),180,.012,7,false),steel);spring.position.set(0,0,0);scene.add(spring);return spring;};
+   const makeSpring=(x:number,zz:number)=>{const points:THREE.Vector3[]=[];for(let k=0;k<=72;k++){const t=k/72,a=t*Math.PI*2*7;points.push(vec(Math.cos(a)*.075,-.21+t*.42,Math.sin(a)*.075));}const spring=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),180,.012,7,false),steel);spring.position.set(x,deck+.46,zz);scene.add(spring);return spring;};
    for(const zz of [-bore*.12,bore*.12]){const x=-bore*.28;intake.push(makeValve(x,z+zz,0x70cdb6));intakeSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    for(const zz of [-bore*.12,bore*.12]){const x=bore*.28;exhaust.push(makeValve(x,z+zz,0xe4a05a));exhaustSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    const inCurve=makeTube(scene,[vec(-width*.52,deck+.04,z+.16),vec(-width*.58,deck-.08,z+.16),vec(-width*.66,deck-.25,z+.16),vec(-width*.72,deck-.35,z+.16)],.12,intakeMaterial);
