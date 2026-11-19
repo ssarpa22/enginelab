@@ -7,7 +7,7 @@ The project combines a framework-independent simulation core with a lightweight 
 ## Requirements
 
 - Node.js 20.19 or newer
-- npm 10 or newer recommended
+- npm 11.6 or newer (Vitest 4.1.12 requires a newer npm resolver than the npm 10 bundled with Node 22)
 
 ## Setup
 
