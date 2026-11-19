@@ -58,7 +58,7 @@ export default function InlineFourScene(props:Props){
   const cover=new THREE.Mesh(new THREE.BoxGeometry(width*.83,.24,length*.94),black);cover.position.set(0,deck+1.05,0);cover.castShadow=true;scene.add(cover);
   // DOHC shafts, eccentric lobes, bucket followers and real compression travel in visible valve springs.
   const cams:THREE.Group[]=[];
-  for(const x of [-width*.28,width*.28]){
+  for(const x of [-bore*.28,bore*.28]){
    const cam=new THREE.Group(),shaft=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,length*.94,28),bronze);shaft.rotation.x=Math.PI/2;cam.add(shaft);
    for(let i=0;i<4;i++)for(const dx of [-.19,.19]){
     const lobe=new THREE.Mesh(new THREE.SphereGeometry(.16,20,16),steel);lobe.scale.set(.78,1.35,1.08);lobe.position.set(0,.12,zAt(i)+dx);cam.add(lobe);
@@ -100,8 +100,8 @@ export default function InlineFourScene(props:Props){
     g.position.set(x,deck+.45,zz);scene.add(g);return g;
    };
    const makeSpring=(x:number,zz:number)=>{const spring=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,.34,16,12,true),steel);spring.position.set(x,deck+.63,zz);scene.add(spring);return spring;};
-   for(const x of [-bore*.22,-bore*.34]){intake.push(makeValve(x,z+.16,0x70cdb6));intakeSprings.push(makeSpring(x,z+.16));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+.16);scene.add(bucket);followers.push(bucket);}
-   for(const x of [bore*.22,bore*.34]){exhaust.push(makeValve(x,z-.16,0xe4a05a));exhaustSprings.push(makeSpring(x,z-.16));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z-.16);scene.add(bucket);followers.push(bucket);}
+   for(const zz of [-bore*.12,bore*.12]){const x=-bore*.28;intake.push(makeValve(x,z+zz,0x70cdb6));intakeSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
+   for(const zz of [-bore*.12,bore*.12]){const x=bore*.28;exhaust.push(makeValve(x,z+zz,0xe4a05a));exhaustSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    const inCurve=makeTube(scene,[vec(-width*.52,deck+.04,z+.16),vec(-width*.58,deck-.08,z+.16),vec(-width*.66,deck-.25,z+.16),vec(-width*.72,deck-.35,z+.16)],.12,intakeMaterial);
    const outCurve=makeTube(scene,[vec(width*.72,deck-.35,z-.16),vec(width*.66,deck-.25,z-.16),vec(width*.58,deck-.08,z-.16),vec(width*.52,deck+.04,z-.16)],.12,exhaustMaterial);
    intakeCurves.push(inCurve);exhaustCurves.push(outCurve);
@@ -154,7 +154,7 @@ export default function InlineFourScene(props:Props){
    const exhaust=calculateValveState(phase).exhaustOpen&&Math.abs(gas.exhaustFlowKgPerS)>.00001;
    p.inGas.forEach((dot,j)=>{const t=(j/p.inGas.length+props.angle/720*1.5)%1;dot.position.copy(s.intakeCurves[i]!.getPoint(gas.intakeFlowKgPerS>=0?t:1-t));dot.visible=intake&&j<Math.ceil(clamp(Math.abs(gas.intakeFlowKgPerS)*55,0,1)*p.inGas.length);});
    p.outGas.forEach((dot,j)=>{const t=(j/p.outGas.length+props.angle/720*1.7)%1;dot.position.copy(s.exhaustCurves[i]!.getPoint(gas.exhaustFlowKgPerS>=0?t:1-t));dot.visible=exhaust&&j<Math.ceil(clamp(Math.abs(gas.exhaustFlowKgPerS)*55,0,1)*p.outGas.length);});
-   p.coolant.forEach((dot,j)=>{const t=(j/p.coolant.length+props.angle/720*.65)%1;dot.position.set(-bore*.64,deck-stroke*(.18+t*.64),(z-spacing*.34));dot.visible=props.systems.coolantFlowLPerMin>1;});
+   p.coolant.forEach((dot,j)=>{const t=(j/p.coolant.length+props.angle/720*.65)%1,a=j*Math.PI*2/p.coolant.length+props.angle*.018;dot.position.set(Math.cos(a)*bore*.58,deck-stroke*(.18+t*.64),z+Math.sin(a)*bore*.58);dot.visible=props.systems.coolantFlowLPerMin>1;});
    p.oilJets.forEach((dot,j)=>{const t=(j/p.oilJets.length+props.angle/720*2.4)%1;dot.position.set(bore*.4*(t-.5),pinY-.28-t*.45,z+(j%2?-.12:.12));dot.visible=props.systems.oilPressureBar>.35;});
    const flame=p.flame.material as THREE.MeshStandardMaterial;const intensity=clamp(gas.burnedFraction,0,1);p.flame.scale.set(.12+intensity*.36,.1+intensity*.26,.12+intensity*.36);flame.opacity=phase>350&&phase<500?intensity*.62:0;p.flame.visible=flame.opacity>.01;
    const heat=clamp((props.systems.headTemperatureC-40)/180,0,1);p.waterMaterial.color.setRGB(.08+.8*heat,.42-.2*heat,.5-.32*heat);
