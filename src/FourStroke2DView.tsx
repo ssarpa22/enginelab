@@ -110,14 +110,14 @@ export default function FourStroke2DView({geometry}:Props){
         <g className="section-cam-assembly" transform={`rotate(${camRotationDeg} ${cx+42} 18)`}>
           <circle cx={cx+42} cy="18" r="12" className="section-cam-base"/><ellipse cx={cx+42} cy="7" rx="8" ry="15" className="section-cam-lobe"/>
         </g>
-        <rect x={cx-53} y={25+intakeLift} width="22" height="9" rx="2" className="section-follower"/>
-        <rect x={cx+31} y={25+exhaustLift} width="22" height="9" rx="2" className="section-follower"/>
+        <rect x={cx-53} y={22+intakeLift} width="22" height="9" rx="2" className="section-follower"/>
+        <rect x={cx+31} y={22+exhaustLift} width="22" height="9" rx="2" className="section-follower"/>
         <path d={`M${cx-42} ${30+intakeLift} V${intakeValveY}`} className="section-valve-stem intake"/>
         <path d={`M${cx-57} ${intakeValveY} Q${cx-42} ${intakeValveY+7} ${cx-27} ${intakeValveY}`} className="section-valve-head intake"/>
         <path d={`M${cx+42} ${30+exhaustLift} V${exhaustValveY}`} className="section-valve-stem exhaust"/>
         <path d={`M${cx+27} ${exhaustValveY} Q${cx+42} ${exhaustValveY+7} ${cx+57} ${exhaustValveY}`} className="section-valve-head exhaust"/>
-        <path d={`M${cx-42} ${37+intakeLift} C${cx-63} ${37+intakeLift} ${cx-63} ${47+intakeLift} ${cx-42} ${49+intakeLift} S${cx-21} 64 ${cx-42} 66 S${cx-63} 74 ${cx-42} 76`} className="section-valve-spring"/>
-        <path d={`M${cx+42} ${37+exhaustLift} C${cx+21} ${37+exhaustLift} ${cx+21} ${47+exhaustLift} ${cx+42} ${49+exhaustLift} S${cx+63} 64 ${cx+42} 66 S${cx+63} 74 ${cx+42} 76`} className="section-valve-spring"/>
+        <path d={`M${cx-42} ${34+intakeLift} C${cx-63} ${37+intakeLift} ${cx-63} ${47+intakeLift} ${cx-42} ${49+intakeLift} S${cx-21} 64 ${cx-42} 66 S${cx-63} 74 ${cx-42} 76`} className="section-valve-spring"/>
+        <path d={`M${cx+42} ${34+exhaustLift} C${cx+21} ${37+exhaustLift} ${cx+21} ${47+exhaustLift} ${cx+42} ${49+exhaustLift} S${cx+63} 64 ${cx+42} 66 S${cx+63} 74 ${cx+42} 76`} className="section-valve-spring"/>
         {spark&&<g className="section-spark"><path d={`M${cx} 69 l-9 13 8-2-4 13 14-17-9 2 5-9z`}/><circle cx={cx} cy="80" r="17"/></g>}
       </g>
       <g clipPath="url(#cylinderChamber)">
