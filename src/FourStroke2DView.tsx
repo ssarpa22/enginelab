@@ -1,4 +1,5 @@
-import { calculateSliderCrankState, type EngineGeometry } from "../packages/simulation-core/src/mechanics";
+import type { EngineGeometry } from "../packages/simulation-core/src/geometry";
+import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { calculateValveState } from "../packages/simulation-core/src/mechanics/valve-timing";
 
 type Phase = "Intake" | "Compression" | "Power" | "Exhaust";
