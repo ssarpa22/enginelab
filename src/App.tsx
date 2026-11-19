@@ -8,7 +8,7 @@ import EngineScene from "./InlineFourScene";
 import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
 import { calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState, type EngineSystemsInput } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { advanceEngineSimulation } from "../packages/simulation-core/src/mechanics/engine-simulation";
-import { advanceEngineDamage, INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simulation-core/src/mechanics/engine-damage";
+import { INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simulation-core/src/mechanics/engine-damage";
 import EngineAudio from "./EngineAudio";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
