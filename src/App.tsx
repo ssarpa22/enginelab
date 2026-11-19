@@ -3,6 +3,7 @@ import { createEngineGeometry, type EngineGeometry } from "../packages/simulatio
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { millimetresToMetres, metresToMillimetres } from "../packages/simulation-core/src/units";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
+import { calculateCylinderThermodynamics } from "../packages/simulation-core/src/mechanics/cylinder-thermodynamics";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, rpm: 1800 };
@@ -100,6 +101,7 @@ function App() {
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
   const phase=phaseAt(cycleAngle);
   const valveState=calculateValveState(cycleAngle);
+  const thermodynamics=calculateCylinderThermodynamics(geometry,cycleAngle);
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
   const spark=valveState.sparkActive;
@@ -161,6 +163,7 @@ function App() {
         <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{setRunning(false);setCycleAngle(Number(e.target.value));}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
         <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p><div className="valve-live-state"><span className={intakeOpen?"is-open":"is-closed"}>ADMISIÓN: {intakeOpen?"ABIERTA":"CERRADA"} · {fmt(valveState.intakeLiftMm,1)} mm</span><span className={exhaustOpen?"is-open":"is-closed"}>ESCAPE: {exhaustOpen?"ABIERTO":"CERRADO"} · {fmt(valveState.exhaustLiftMm,1)} mm</span><span className={spark?"spark-live":""}>ENCENDIDO: {spark?"CHISPA":"EN ESPERA"}</span></div></div></div>
         <div className="timing-card"><div className="timing-card-heading">CALADO DE DISTRIBUCIÓN <span>REFERENCIA INICIAL</span></div><div className="timing-grid"><div><span>Admisión abre</span><strong>{DEFAULT_VALVE_TIMING.intakeOpensBtdc}° antes PMS</strong></div><div><span>Admisión cierra</span><strong>{DEFAULT_VALVE_TIMING.intakeClosesAbdc}° después PMI</strong></div><div><span>Escape abre</span><strong>{DEFAULT_VALVE_TIMING.exhaustOpensBbdc}° antes PMI</strong></div><div><span>Escape cierra</span><strong>{DEFAULT_VALVE_TIMING.exhaustClosesAtdc}° después PMS</strong></div><div><span>Avance de encendido</span><strong>{DEFAULT_VALVE_TIMING.sparkAdvanceBtdc}° antes PMS</strong></div><div><span>Alzada máxima</span><strong>{DEFAULT_VALVE_TIMING.intakeMaxLiftMm} / {DEFAULT_VALVE_TIMING.exhaustMaxLiftMm} mm</strong></div></div><p>Perfil de leva simplificado con apertura y cierre progresivos; valores orientativos, no corresponden a un motor comercial específico.</p></div>
+        <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO <span>MODELO 0D · 1 ZONA</span></div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.cylinderVolumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.trappedMassKg*1000,3)} <small>g</small></strong></div></div><p>Presión y temperatura calculadas con gas ideal, compresión/expansión politrópica y aporte de calor idealizado. No representa una medición ni una combustión química real.</p></div>
       </section>
       <aside className="panel controls-panel">
         <div className="panel-header"><div><div className="panel-kicker">02 / CONFIGURACIÓN</div><h2>Dimensiones del motor</h2></div><span className="settings-icon">⚙</span></div>
