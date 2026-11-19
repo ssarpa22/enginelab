@@ -22,6 +22,7 @@ export type CylinderMechanicalState = {
   skirtClearanceMm: number;
   rodToBlockClearanceMm: number;
   mechanicalWarning: string | null;
+  valveFloatSeverity: number;
 };
 
 export type EngineSystemsState = {
@@ -80,7 +81,9 @@ export function calculateCylinderMechanics(
   globalCycleAngleDeg: number,
   cylinderIndex: number,
   rpm: number,
-  timing: ValveTiming = DEFAULT_VALVE_TIMING
+  timing: ValveTiming = DEFAULT_VALVE_TIMING,
+  valveFloatSeverity = 0,
+  thermalExpansionMm = 0
 ): CylinderMechanicalState {
   if (!Number.isFinite(rpm) || rpm < 0) throw new RangeError("RPM must be finite and non-negative.");
   const phase = getInlineFourCylinderPhase(globalCrankAngleDeg,globalCycleAngleDeg,cylinderIndex);
@@ -93,8 +96,9 @@ export function calculateCylinderMechanics(
   const minimumSafeClearanceMm=1.0;
   const clearanceBeforeValveMm=deckClearanceM*1000+k.pistonDisplacementM*1000+pocketDepthMm;
   const maxSafeLiftMm=Math.max(0,clearanceBeforeValveMm-minimumSafeClearanceMm);
-  const intakeActual=Math.min(valve.intakeLiftMm,maxSafeLiftMm);
-  const exhaustActual=Math.min(valve.exhaustLiftMm,maxSafeLiftMm);
+  const effectiveLiftFactor=1-clamp(valveFloatSeverity,0,1)*.65;
+  const intakeActual=Math.min(valve.intakeLiftMm*effectiveLiftFactor,maxSafeLiftMm);
+  const exhaustActual=Math.min(valve.exhaustLiftMm*effectiveLiftFactor,maxSafeLiftMm);
   const minimumValveClearanceMm=clearanceBeforeValveMm-Math.max(intakeActual,exhaustActual);
   const valveCollision=valve.intakeLiftMm>maxSafeLiftMm+1e-6||valve.exhaustLiftMm>maxSafeLiftMm+1e-6;
   const skirtClearanceMm=geometry.boreM*1000*.0007-Math.max(0,thermalExpansionMm);
@@ -104,6 +108,8 @@ export function calculateCylinderMechanics(
   const rodToBlockClearanceMm=crankcaseInnerHalfWidthMm-
     geometry.crankRadiusM*1000-rodBigEndRadiusMm;
   const warning=valveCollision?"Interferencia pistón-válvula evitada por el limitador cinemático":
+    skirtClearanceMm<=0?"Interferencia térmica pistón-cilindro: riesgo de gripado":
+    valveFloatSeverity>.35?"Flotación de válvulas: alzada efectiva reducida":
     rodToBlockClearanceMm<2?"Holgura reducida entre biela y bloque":null;
   return {
     cylinder:cylinderIndex+1,crankAngleRad:theta,cycleAngleDeg:phase.cycleAngleDeg,
@@ -115,7 +121,7 @@ export function calculateCylinderMechanics(
     intakeLiftCommandMm:valve.intakeLiftMm,exhaustLiftCommandMm:valve.exhaustLiftMm,
     intakeLiftActualMm:intakeActual,exhaustLiftActualMm:exhaustActual,
     minimumValveClearanceMm, valveCollision,skirtClearanceMm,rodToBlockClearanceMm,
-    mechanicalWarning:warning
+    mechanicalWarning:warning,valveFloatSeverity:clamp(valveFloatSeverity,0,1)
   };
 }
 
