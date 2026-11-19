@@ -131,11 +131,11 @@ function App() {
     const state=calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, effectiveRpm);
     return {
       ...state,
-      pressurePa:state.pressurePa*(1-damage.misfireProbability*.65),
-      burnedFraction:state.burnedFraction*(1-damage.misfireProbability),
+      pressurePa:state.pressurePa*(1-damage.misfireProbability*.65)*(setup.rpm===0?.65:1),
+      burnedFraction:state.burnedFraction*(1-damage.misfireProbability)*(setup.rpm===0?0:1),
       indicatedTorqueNm:Math.max(0,state.indicatedTorqueNm*damage.powerFactor-frictionTorquePerCylinder),
       indicatedPowerW:Math.max(0,state.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
-      heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)
+      heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)*(setup.rpm===0?0:1)
     };
   }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
   const crankCoupling=useMemo(()=>calculateInlineFourCrankCoupling(geometry,cycleAngle%360,effectiveRpm,cylinderStates.map(state=>state.pressurePa)),[geometry,cycleAngle,effectiveRpm,cylinderStates]);
@@ -158,7 +158,7 @@ function App() {
   };
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
-  const spark=valveState.sparkActive;
+  const spark=setup.rpm>0&&valveState.sparkActive;
   const displacement=metresToMillimetres(current.pistonDisplacementM);
   const litres=geometry.totalDisplacementM3*1000;
   const update=(key:keyof Setup,value:number)=>setSetup(previous=>{
@@ -192,7 +192,7 @@ function App() {
         const nextCrankshaft=nextSimulation.damage.seized?crankshaftRef.current:stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{targetRpm:setup.rpm,dtSeconds:dt*visualRate,loadTorqueNm:22,frictionTorqueNm:3,inertiaKgM2:.42,governorGainNmPerRpm:.45,maximumGasTorqueNm:220});
         crankshaftRef.current=nextCrankshaft;
         const advance=nextSimulation.damage.seized?0:((nextCrankshaft.cycleAngleDeg-from+720)%720);
-        if(advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95);}
+        if(setup.rpm>0&&advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95);}
         const next=nextCrankshaft.cycleAngleDeg;
         if(time-lastUiPaint>=33){setCycleAngle(next);setShaftRpm(nextCrankshaft.rpm);lastUiPaint=time;}
       }
