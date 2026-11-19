@@ -10,7 +10,7 @@ import { calculateCamFollowerCycleAngleDeg, calculateCamLobeProfileCycleAngleDeg
 import { createAdaptiveResolutionState, updateAdaptiveResolution } from "./rendering/adaptive-resolution";
 
 type CylinderTelemetry={pressurePa:number;intakeMassFlowKgPerS:number;exhaustMassFlowKgPerS:number;burnedFraction:number;heatReleaseRateW:number;temperatureK:number};
-type Props={geometry:EngineGeometry;angle:number;rpm:number;visualRate:number;cylinderStates:CylinderTelemetry[];mechanics:CylinderMechanicalState[];systems:EngineSystemsState;sparkFlash:boolean;starterActive:boolean};
+type Props={geometry:EngineGeometry;angle:number;rpm:number;cylinderStates:CylinderTelemetry[];mechanics:CylinderMechanicalState[];systems:EngineSystemsState;sparkFlash:boolean;starterActive:boolean};
 const vec=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 function convexHull(points:THREE.Vector2[]):THREE.Vector2[]{
  const sorted=[...points].sort((a,b)=>a.x-b.x||a.y-b.y);
@@ -378,7 +378,7 @@ function InlineFourScene(props:Props){
   // Oil-pump gear meshes are intentionally not animated without a visible drive train.
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
   s.metalMaterials[0]!.color.setHex(props.systems.headTemperatureC>180?0x9d5540:0x879599);
- },[props.geometry,props.angle,props.rpm,props.visualRate,props.cylinderStates,props.mechanics,props.systems,props.starterActive]);
+ },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems,props.starterActive]);
 
  return <div className="engine-3d-host engine-3d-inline-four" ref={host}>
   <div className="engine-3d-hint">ROTÁ · ZOOM · INSPECCIONÁ EL CONJUNTO</div>
