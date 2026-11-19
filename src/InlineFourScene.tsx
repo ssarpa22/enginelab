@@ -93,7 +93,7 @@ export default function InlineFourScene(props:Props) {
 
   // Timing belt and sprockets at the front of the engine.
   const drive=new THREE.Group();
-  for(const [r,x,y] of [[.28,0,crankY],[.35,-.52,headY+.25],[.35,.52,headY+.25]] as number[][]){
+  for(const [r,x,y] of [[.28,0,crankY],[.35,-.52,headY+.25],[.35,.52,headY+.25]] as [number,number,number][]){
    const wheel=new THREE.Mesh(new THREE.CylinderGeometry(r,r,.12,40),bronze);wheel.rotation.x=Math.PI/2;wheel.position.set(x,y,2.2);drive.add(wheel);
   }
   const beltPath=new THREE.CatmullRomCurve3([V(-.28,crankY,2.24),V(-.34,-.5,2.24),V(-.35,.7,2.24),V(-.34,headY+.55,2.24),V(.34,headY+.55,2.24),V(.35,.7,2.24),V(.34,-.5,2.24),V(.28,crankY,2.24)]);
@@ -123,7 +123,7 @@ export default function InlineFourScene(props:Props) {
    const inCurve=tube(scene,[V(-1.12,headY-.02,z+.18),V(-.96,headY-.04,z+.18),V(-.72,headY-.14,z+.16),V(-.46,headY-.25,z+.13),V(-.28,headY-.38,z+.13)],.095,inMat);
    const outCurve=tube(scene,[V(.28,headY-.38,z-.13),V(.46,headY-.25,z-.13),V(.72,headY-.14,z-.16),V(.96,headY-.04,z-.18),V(1.12,headY-.02,z-.18)],.095,outMat);
    inCurves.push(inCurve);outCurves.push(outCurve);
-   parts.push({piston,rod,intake,exhaust,spark,flame,inGas,outGas,chamber,throw:throws[i]});
+   parts.push({piston,rod,intake,exhaust,spark,flame,inGas,outGas,chamber,throw:throws[i]!});
   }
   // Common intake plenum and exhaust collector link the four individual runners.
   const plenum=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,4.05,28),inMat);plenum.rotation.x=Math.PI/2;plenum.position.set(-1.24,headY+.02,0);scene.add(plenum);
@@ -143,7 +143,7 @@ export default function InlineFourScene(props:Props) {
   const stroke=2.05,cr=stroke/2,crankY=-1.48,deck=crankY+stroke+.18,headY=deck+.36,spacing=.98;
   const mech=INLINE_FOUR_CRANK_PHASES_DEG.map(degrees=>degrees*Math.PI/180),offsets=INLINE_FOUR_CYCLE_OFFSETS_DEG,crankRad=((props.angle%360)+360)%360*Math.PI/180;
   s.parts.forEach((c,i)=>{
-   const z=(i-1.5)*spacing,local=crankRad+mech[i],cycle=props.angle+offsets[i],v=calculateValveState(cycle),telemetry=props.cylinderStates[i];
+   const z=(i-1.5)*spacing,local=crankRad+mech[i]!,cycle=props.angle+offsets[i]!,v=calculateValveState(cycle),telemetry=props.cylinderStates[i]!;
    const k=calculateSliderCrankState(props.geometry,local,0),dy=k.pistonDisplacementM/props.geometry.strokeM*stroke,pistonY=deck-dy-.12;
    c.piston.position.set(0,pistonY,z);between(c.rod,V(0,pistonY,z),V(cr*Math.sin(local),crankY+cr*Math.cos(local),z));c.throw.rotation.z=-mech[i];
    c.intake.forEach(x=>{x.position.y=headY+.04-v.intakeLiftMm*.035;});
@@ -154,8 +154,8 @@ export default function InlineFourScene(props:Props) {
    c.flame.scale.set(flameScale,flameScale*.72,flameScale);
    flame.opacity=localCycle>340&&localCycle<500?clamp(telemetry.burnedFraction*.9,.04,.68):0;c.flame.visible=flame.opacity>0;
    const inStrength=clamp(Math.abs(telemetry.intakeFlowKgPerS)*38,0,1),outStrength=clamp(Math.abs(telemetry.exhaustFlowKgPerS)*38,0,1);
-   c.inGas.forEach((p,j)=>{const t=(j/c.inGas.length+cycle/720*1.6)%1;p.position.copy(s.inCurves[i].getPoint(telemetry.intakeFlowKgPerS>=0?t:1-t));p.visible=v.intakeLiftMm>.1&&inStrength>.02&&j<Math.ceil(inStrength*c.inGas.length);});
-   c.outGas.forEach((p,j)=>{const t=(j/c.outGas.length+cycle/720*1.8)%1;p.position.copy(s.outCurves[i].getPoint(telemetry.exhaustFlowKgPerS>=0?t:1-t));p.visible=v.exhaustLiftMm>.1&&outStrength>.02&&j<Math.ceil(outStrength*c.outGas.length);});
+   c.inGas.forEach((p,j)=>{const t=(j/c.inGas.length+cycle/720*1.6)%1;p.position.copy(s.inCurves[i]!.getPoint(telemetry.intakeFlowKgPerS>=0?t:1-t));p.visible=v.intakeLiftMm>.1&&inStrength>.02&&j<Math.ceil(inStrength*c.inGas.length);});
+   c.outGas.forEach((p,j)=>{const t=(j/c.outGas.length+cycle/720*1.8)%1;p.position.copy(s.outCurves[i]!.getPoint(telemetry.exhaustFlowKgPerS>=0?t:1-t));p.visible=v.exhaustLiftMm>.1&&outStrength>.02&&j<Math.ceil(outStrength*c.outGas.length);});
    c.chamber.forEach((p,j)=>{const a=j*Math.PI*2/c.chamber.length+props.angle*.008,r=.06+(j%3)*.05;p.position.set(Math.cos(a)*r,deck+.42-(j%3)*.04,z+Math.sin(a)*r);p.visible=localCycle>180&&localCycle<540&&telemetry.burnedFraction<.98;});
   });
   s.intakeCam.rotation.z=-crankRad*.5;s.exhaustCam.rotation.z=-crankRad*.5;s.crank.rotation.z=-crankRad;
