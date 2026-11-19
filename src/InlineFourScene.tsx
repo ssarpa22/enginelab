@@ -27,11 +27,11 @@ export default function InlineFourScene(props:Props){
   const zAt=(i:number)=>(i-1.5)*spacing;
   const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(width*2.8,deck*.95,length*.9);
   let renderer:THREE.WebGLRenderer;
-  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});}catch{el.textContent="Este navegador no pudo iniciar WebGL.";return;}
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.7));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;el.appendChild(renderer.domElement);
+  try{renderer=new THREE.WebGLRenderer({antialias:false,alpha:false});}catch{el.textContent="Este navegador no pudo iniciar WebGL.";return;}
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.35));renderer.shadowMap.enabled=false;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;el.appendChild(renderer.domElement);
   const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.065;controls.target.set(0,deck*.45,0);controls.minDistance=5;controls.maxDistance=32;controls.maxPolarAngle=Math.PI*.84;
   scene.add(new THREE.HemisphereLight(0xd9e8e6,0x1b2427,2.1));
-  const key=new THREE.DirectionalLight(0xffe4c4,3.5);key.position.set(7,deck+7,length*.6);key.castShadow=true;key.shadow.mapSize.set(2048,2048);scene.add(key);
+  const key=new THREE.DirectionalLight(0xffe4c4,3.5);key.position.set(7,deck+7,length*.6);key.castShadow=false;scene.add(key);
   const rim=new THREE.DirectionalLight(0x67c7b4,2.3);rim.position.set(-width*2,deck*.7,-length*.7);scene.add(rim);
   const steel=mat(0xb6c2c4,.22,.92),forged=mat(0x56656b,.3,.86),aluminium=mat(0x879599,.32,.82),dark=mat(0x273236,.5,.65),bronze=mat(0x987047,.28,.84),black=mat(0x151d20,.55,.48);
   const oilMaterial=new THREE.MeshStandardMaterial({color:0x302512,roughness:.18,metalness:.12,transparent:true,opacity:.88});
