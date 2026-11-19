@@ -85,7 +85,12 @@ function InlineFourScene(props:Props){
   // The crankcase and block are separate cast sections. The front service face is removed for inspection.
   const lowerY=-.72,blockHeight=deck-lowerY,blockCenter=(deck+lowerY)/2;
   const sideWall=new THREE.Mesh(new RoundedBoxGeometry(.22,blockHeight,length,4,.045),dark);sideWall.position.set(-width/2,blockCenter,0);sideWall.castShadow=true;sideWall.receiveShadow=true;scene.add(sideWall);
-  const rearWall=new THREE.Mesh(new RoundedBoxGeometry(width,blockHeight,.2,4,.045),dark);rearWall.position.set(0,blockCenter,-length/2);rearWall.castShadow=true;scene.add(rearWall);
+  // Rear inspection opening exposes the flywheel and starter ring gear on the opposite crankshaft end.
+  const rearWallShape=new THREE.Shape();
+  rearWallShape.moveTo(-width/2,lowerY);rearWallShape.lineTo(width/2,lowerY);rearWallShape.lineTo(width/2,deck);rearWallShape.lineTo(-width/2,deck);rearWallShape.closePath();
+  const crankcaseInspectionOpening=new THREE.Path();crankcaseInspectionOpening.absarc(0,0,1.05,0,Math.PI*2,true);rearWallShape.holes.push(crankcaseInspectionOpening);
+  const rearWallGeometry=new THREE.ExtrudeGeometry(rearWallShape,{depth:.2,bevelEnabled:false});rearWallGeometry.translate(0,0,-.1);
+  const rearWall=new THREE.Mesh(rearWallGeometry,dark);rearWall.position.z=-length/2;rearWall.castShadow=true;scene.add(rearWall);
   const frontRails=[-.42,.42].map(x=>{const rail=new THREE.Mesh(new RoundedBoxGeometry(width*.48,blockHeight*.88,.18,4,.035),dark);rail.position.set(x,blockCenter,length/2);scene.add(rail);return rail;});
   // Open deck cutaway: two structural rails leave the four bores visible.
   for(const x of [-1,1]){
