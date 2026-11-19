@@ -8,7 +8,7 @@ const geometry = createEngineGeometry({
   strokeM: 0.086,
   connectingRodLengthM: 0.143,
   compressionRatio: 10.5,
-  bankAngleRad: 0
+  bankAngleRad: Math.PI / 2
 });
 
 describe("pressure-coupled inline-four crankshaft", () => {
