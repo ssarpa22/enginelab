@@ -102,7 +102,6 @@ function Mechanism({ geometry, angle, sparkFlash }: { geometry: EngineGeometry; 
 
 function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
-  const [faults,setFaults]=useState({oilLeakLPerMin:0,coolantLeakLPerMin:0});
   const [cycleAngle,setCycleAngle]=useState(0);
   const cycleAngleRef=useRef(0);
   const [running,setRunning]=useState(true);
@@ -114,7 +113,7 @@ function App() {
   const damageRef=useRef<EngineDamageState>({...INITIAL_ENGINE_DAMAGE});
   const effectiveRpm=damage.seized?0:setup.rpm*damage.powerFactor;
   const systemInputRef=useRef<EngineSystemsInput>({rpm:INITIAL.rpm,load:.35,exhaustGasTemperatureC:450,ambientTemperatureC:25});
-  const geometry=useMemo(()=>geometryFor(setup),[setup]);
+  const geometry=useMemo(()=>geometryFor(setup),[setup.boreMm,setup.strokeMm,setup.rodMm,setup.compressionRatio]);
   const crankAngle=(cycleAngle%360)*Math.PI/180;
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,effectiveRpm),[geometry,crankAngle,effectiveRpm]);
   const phase=phaseAt(cycleAngle);
@@ -142,8 +141,8 @@ function App() {
     load:clamp(.12+meanBurn*.78,.1,.95),
     exhaustGasTemperatureC:clamp(meanGasTemperature*.42-90,25,950),
     ambientTemperatureC:25,
-    oilLeakLPerMin:faults.oilLeakLPerMin+damageRef.current.bearingWear*.004+damageRef.current.pistonScuffing*.003,
-    coolantLeakLPerMin:faults.coolantLeakLPerMin+damageRef.current.headGasketDamage*.012,
+    oilLeakLPerMin:damageRef.current.bearingWear*.004+damageRef.current.pistonScuffing*.003,
+    coolantLeakLPerMin:damageRef.current.headGasketDamage*.012,
     oilPickupAvailability:1,
     coolantPumpEfficiency:1
   };
@@ -152,7 +151,6 @@ function App() {
   const spark=valveState.sparkActive;
   const displacement=metresToMillimetres(current.pistonDisplacementM);
   const litres=geometry.totalDisplacementM3*1000;
-  const rodMin=Math.floor(setup.strokeMm/2)+5;
   const update=(key:keyof Setup,value:number)=>setSetup(previous=>{
     const next={...previous,[key]:value};
     if(key==="strokeMm"&&next.rodMm<=value/2)next.rodMm=Math.floor(value/2)+5;
@@ -160,7 +158,7 @@ function App() {
   });
   useEffect(()=>{
     if(!running)return;
-    let frame=0,previous=0,sparkTimer=0,lastSystemPaint=0;
+    let frame=0,previous=0,sparkTimer=0,lastSystemPaint=0,lastUiPaint=0;
     const sparkAngle=360-DEFAULT_VALVE_TIMING.sparkAdvanceBtdc;
     const tick=(time:number)=>{
       if(previous!==0){
@@ -177,7 +175,7 @@ function App() {
         }
         const next=(from+advance)%720;
         cycleAngleRef.current=next;
-        setCycleAngle(next);
+        if(time-lastUiPaint>=33){setCycleAngle(next);lastUiPaint=time;}
       }
       previous=time;
       frame=requestAnimationFrame(tick);
@@ -185,7 +183,7 @@ function App() {
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
   },[running,setup.rpm,visualRate]);
-  const reset=()=>{setSetup(INITIAL);setFaults({oilLeakLPerMin:0,coolantLeakLPerMin:0});cycleAngleRef.current=0;setCycleAngle(0);setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
+  const reset=()=>{setSetup(INITIAL);cycleAngleRef.current=0;setCycleAngle(0);setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
     Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
@@ -215,9 +213,8 @@ function App() {
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div><EngineAudio rpm={effectiveRpm} running={running&&!damage.seized}/>
-          <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD DE SIMULACIÓN <strong>{visualRate.toFixed(1)}x</strong></label><input id="playback-speed" type="range" min="0.1" max="1" step="0.1" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}/><span className="speed-endpoints">0.1x — 1.0x</span></div>
+          <div className="transport-speed"><span className="speed-mode-label">MODO DE SIMULACIÓN</span><div className="speed-mode-buttons"><button type="button" className={visualRate===0.15?"is-active":""} onClick={()=>setVisualRate(0.15)}>LENTA · DETALLE</button><button type="button" className={visualRate===1?"is-active":""} onClick={()=>setVisualRate(1)}>TIEMPO REAL · 1×</button></div></div>
         </div>
-        <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{const next=Number(e.target.value);setRunning(false);cycleAngleRef.current=next;setCycleAngle(next);}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
         <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p><div className="valve-live-state"><span className={intakeOpen?"is-open":"is-closed"}>ADMISIÓN: {intakeOpen?"ABIERTA":"CERRADA"} · {fmt(valveState.intakeLiftMm,1)} mm</span><span className={exhaustOpen?"is-open":"is-closed"}>ESCAPE: {exhaustOpen?"ABIERTO":"CERRADO"} · {fmt(valveState.exhaustLiftMm,1)} mm</span><span className={spark?"spark-live":""}>ENCENDIDO: {spark?"CHISPA":"EN ESPERA"}</span><span>FLUJO: {intakeOpen?"ADMISIÓN":exhaustOpen?"GASES DE ESCAPE":"SIN INTERCAMBIO"}</span></div></div></div>
         <div className="timing-card"><div className="timing-card-heading">CALADO DE DISTRIBUCIÓN <span>REFERENCIA INICIAL</span></div><div className="timing-grid"><div><span>Admisión abre</span><strong>{DEFAULT_VALVE_TIMING.intakeOpensBtdc}° antes PMS</strong></div><div><span>Admisión cierra</span><strong>{DEFAULT_VALVE_TIMING.intakeClosesAbdc}° después PMI</strong></div><div><span>Escape abre</span><strong>{DEFAULT_VALVE_TIMING.exhaustOpensBbdc}° antes PMI</strong></div><div><span>Escape cierra</span><strong>{DEFAULT_VALVE_TIMING.exhaustClosesAtdc}° después PMS</strong></div><div><span>Avance de encendido</span><strong>{DEFAULT_VALVE_TIMING.sparkAdvanceBtdc}° antes PMS</strong></div><div><span>Alzada máxima</span><strong>{DEFAULT_VALVE_TIMING.intakeMaxLiftMm} / {DEFAULT_VALVE_TIMING.exhaustMaxLiftMm} mm</strong></div></div><p>Perfil de leva simplificado con apertura y cierre progresivos; valores orientativos, no corresponden a un motor comercial específico.</p></div>
         <div className="thermo-card"><div className="timing-card-heading">ESTADO TERMODINÁMICO · CILINDRO 1 <span>MODELO 0D · 1 ZONA</span></div><div className="cylinder-state-grid">{cylinderStates.map((state,index)=><div key={index}><span>CILINDRO {index+1}</span><strong>{fmt(state.pressurePa/100000,2)} <small>bar</small></strong><small>{fmt(state.temperatureK-273.15,0)} °C</small></div>)}</div><div className="thermo-values"><div><span>PRESIÓN INTERNA</span><strong>{fmt(thermodynamics.pressurePa/100000,2)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{fmt(thermodynamics.temperatureK-273.15,0)} <small>°C</small></strong></div><div><span>VOLUMEN INSTANTÁNEO</span><strong>{fmt(thermodynamics.volumeM3*1e6,1)} <small>cm³</small></strong></div><div><span>MASA ATRAPADA</span><strong>{fmt(thermodynamics.massKg*1000,3)} <small>g</small></strong></div><div><span>CAUDAL DE ADMISIÓN</span><strong>{fmt(thermodynamics.intakeMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>CAUDAL DE ESCAPE</span><strong>{fmt(thermodynamics.exhaustMassFlowKgPerS*1000,1)} <small>g/s</small></strong></div><div><span>FRACCIÓN QUEMADA</span><strong>{fmt(thermodynamics.burnedFraction*100,1)} <small>%</small></strong></div><div><span>LIBERACIÓN DE CALOR</span><strong>{fmt(thermodynamics.heatReleaseRateW/1000,2)} <small>kW</small></strong></div><div><span>PAR INDICADO INSTANTÁNEO</span><strong>{fmt(thermodynamics.indicatedTorqueNm,1)} <small>Nm</small></strong></div><div><span>POTENCIA INDICADA INSTANTÁNEA</span><strong>{fmt(thermodynamics.indicatedPowerW/1000,2)} <small>kW</small></strong></div></div><p>Modelo 0D de masa y energía: flujo compresible por válvulas con estrangulamiento, calor liberado con ley Wiebe y pérdidas térmicas a paredes. Los resultados son estimaciones didácticas, no datos de un motor calibrado ni CFD.</p>
@@ -261,13 +258,7 @@ function App() {
       </section>
       <aside className="panel controls-panel">
         <div className="panel-header"><div><div className="panel-kicker">02 / CONFIGURACIÓN</div><h2>Dimensiones del motor</h2></div><span className="settings-icon">⚙</span></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="bore">DIÁMETRO DEL CILINDRO</label><output>{setup.boreMm} mm</output></div><input id="bore" type="range" min="60" max="120" step="1" value={setup.boreMm} onChange={e=>update("boreMm",Number(e.target.value))}/><div className="range-ends"><span>60 mm</span><span>120 mm</span></div></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="stroke">CARRERA</label><output>{setup.strokeMm} mm</output></div><input id="stroke" type="range" min="50" max="120" step="1" value={setup.strokeMm} onChange={e=>update("strokeMm",Number(e.target.value))}/><div className="range-ends"><span>50 mm</span><span>120 mm</span></div></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="rod">LARGO DE BIELA</label><output>{setup.rodMm} mm</output></div><input id="rod" type="range" min={rodMin} max="220" step="1" value={setup.rodMm} onChange={e=>update("rodMm",Number(e.target.value))}/><div className="range-ends"><span>{rodMin} mm</span><span>220 mm</span></div></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="compression">RELACIÓN DE COMPRESIÓN</label><output>{fmt(setup.compressionRatio,1)} : 1</output></div><input id="compression" type="range" min="7" max="15" step="0.1" value={setup.compressionRatio} onChange={e=>update("compressionRatio",Number(e.target.value))}/><div className="range-ends"><span>7 : 1</span><span>15 : 1</span></div></div>
         <div className="control-group rpm-control"><div className="control-label-row"><label htmlFor="rpm">RÉGIMEN DEL MOTOR</label><output>{setup.rpm.toLocaleString("es-AR")} RPM</output></div><input id="rpm" type="range" min="0" max="8000" step="50" value={setup.rpm} onChange={e=>update("rpm",Number(e.target.value))}/><div className="range-ends"><span>0 RPM</span><span>8.000 RPM</span></div></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="oil-leak">FUGA DE ACEITE INDUCIDA</label><output>{faults.oilLeakLPerMin.toFixed(1)} L/min</output></div><input id="oil-leak" type="range" min="0" max="4" step="0.1" value={faults.oilLeakLPerMin} onChange={e=>setFaults(v=>({...v,oilLeakLPerMin:Number(e.target.value)}))}/><div className="range-ends"><span>Sin fuga</span><span>Fuga severa</span></div></div>
-        <div className="control-group"><div className="control-label-row"><label htmlFor="coolant-leak">FUGA DE REFRIGERANTE INDUCIDA</label><output>{faults.coolantLeakLPerMin.toFixed(1)} L/min</output></div><input id="coolant-leak" type="range" min="0" max="4" step="0.1" value={faults.coolantLeakLPerMin} onChange={e=>setFaults(v=>({...v,coolantLeakLPerMin:Number(e.target.value)}))}/><div className="range-ends"><span>Sin fuga</span><span>Fuga severa</span></div></div>
         <div className="derived-box"><div className="derived-heading">DATOS MECÁNICOS <span>CALCULADOS</span></div>
           <div className="derived-row"><span>Radio del cigüeñal</span><strong>{fmt(metresToMillimetres(geometry.crankRadiusM),1)} mm</strong></div>
           <div className="derived-row"><span>Relación biela / manivela</span><strong>{fmt(geometry.rodToCrankRatio,2)} : 1</strong></div>
