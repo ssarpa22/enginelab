@@ -142,7 +142,7 @@ function App() {
     return next;
   });
   useEffect(()=>{
-    if(!running||setup.rpm===0)return;
+    if(!running)return;
     let frame=0,previous=0,sparkTimer=0,lastSystemPaint=0;
     const sparkAngle=360-DEFAULT_VALVE_TIMING.sparkAdvanceBtdc;
     const tick=(time:number)=>{
