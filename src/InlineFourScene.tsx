@@ -41,9 +41,8 @@ function createCamLobeShape(kind:"intake"|"exhaust",centerCycle:number,cylinderO
   const localCycle=calculateCamLobeProfileCycleAngleDeg(angleDeg,centerCycle,cylinderOffset);
   const valve=calculateValveState(localCycle);
   const liftMm=kind==="intake"?valve.intakeLiftMm:valve.exhaustLiftMm;
-  // A real cam is not a circular disc with a pointed bump: use a broad,
-  // asymmetrical flank and a smoothly rounded nose. The exponent softens the
-  // nose while preserving the lift envelope used by the valve train.
+  // A real cam is not a circular disc with a pointed bump: soften the lobe
+  // into a broad, smoothly curved nose while preserving the valve lift envelope.
   const maxLift=kind==="intake"?DEFAULT_VALVE_TIMING.intakeMaxLiftMm:DEFAULT_VALVE_TIMING.exhaustMaxLiftMm;
   const normalizedLift=clamp(liftMm/Math.max(maxLift,1e-6),0,1);
   const curvedLift=Math.pow(normalizedLift,.78);
