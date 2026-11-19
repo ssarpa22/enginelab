@@ -70,7 +70,6 @@ export function calculateInlineFourCrankCoupling(
   }
 
   const areaM2 = Math.PI * geometry.boreM ** 2 / 4;
-  const omegaRadPerSecond = rpm * Math.PI / 30;
   const crankAngle = wrap(crankAngleDeg, 360);
   const cylinders = cylinderPressuresPa.map((pressurePa, index) => {
     const localAngleDeg = wrap(crankAngle + INLINE_FOUR_CRANK_PHASES_DEG[index]!, 360);
