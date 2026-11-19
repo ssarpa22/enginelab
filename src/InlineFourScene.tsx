@@ -52,7 +52,7 @@ export default function InlineFourScene(props:Props) {
   // One-piece inline block, cutaway skirt and four machined cylinder liners.
   const blockSide=new THREE.Mesh(new THREE.BoxGeometry(.18,2.85,4.28),dark);blockSide.position.set(-1.02,-.02,0);blockSide.castShadow=true;blockSide.receiveShadow=true;scene.add(blockSide);
   const rearBulkhead=new THREE.Mesh(new THREE.BoxGeometry(2.12,2.85,.18),dark);rearBulkhead.position.set(0,-.02,-2.14);rearBulkhead.castShadow=true;scene.add(rearBulkhead);
-  const frontRails=[-.68,.68].map(x=>{const rail=new THREE.Mesh(new THREE.BoxGeometry(.72,2.5,.16),dark);rail.position.set(x,-.02,2.14);scene.add(rail);return rail;});
+  [-.68,.68].forEach(x=>{const rail=new THREE.Mesh(new THREE.BoxGeometry(.72,2.5,.16),dark);rail.position.set(x,-.02,2.14);scene.add(rail);});
   const deckRail=new THREE.Mesh(new THREE.BoxGeometry(.18,.16,4.25),aluminum);deckRail.position.set(-.88,deck-.02,0);scene.add(deckRail);
   for(let i=0;i<4;i++){
    const z=zAt(i);
@@ -155,7 +155,7 @@ export default function InlineFourScene(props:Props) {
    const inStrength=clamp(Math.abs(telemetry.intakeFlowKgPerS)*38,0,1),outStrength=clamp(Math.abs(telemetry.exhaustFlowKgPerS)*38,0,1);
    c.inGas.forEach((p,j)=>{const t=(j/c.inGas.length+props.angle/720*1.6)%1;p.position.copy(s.inCurves[i].getPoint(telemetry.intakeFlowKgPerS>=0?t:1-t));p.visible=v.intakeLiftMm>.1&&inStrength>.02&&j<Math.ceil(inStrength*c.inGas.length);});
    c.outGas.forEach((p,j)=>{const t=(j/c.outGas.length+props.angle/720*1.8)%1;p.position.copy(s.outCurves[i].getPoint(telemetry.exhaustFlowKgPerS>=0?t:1-t));p.visible=v.exhaustLiftMm>.1&&outStrength>.02&&j<Math.ceil(outStrength*c.outGas.length);});
-   c.chamber.forEach((p,j)=>{const a=j*Math.PI*2/c.chamber.length+props.angle*.008,r=.06+(j%3)*.05;p.position.set(Math.cos(a)*r,deck+.42-(j%3)*.04,z+Math.sin(a)*r);p.visible=localCycle>180&&localCycle<540&&props.burnedFraction<.98;});
+   c.chamber.forEach((p,j)=>{const a=j*Math.PI*2/c.chamber.length+props.angle*.008,r=.06+(j%3)*.05;p.position.set(Math.cos(a)*r,deck+.42-(j%3)*.04,z+Math.sin(a)*r);p.visible=localCycle>180&&localCycle<540&&telemetry.burnedFraction<.98;});
   });
   s.intakeCam.rotation.z=crankRad*.5;s.exhaustCam.rotation.z=crankRad*.5;s.crank.rotation.z=-crankRad;
  },[props.geometry,props.angle,props.pressurePa,props.burnedFraction,props.intakeFlowKgPerS,props.exhaustFlowKgPerS,props.cylinderStates,props.sparkFlash]);
