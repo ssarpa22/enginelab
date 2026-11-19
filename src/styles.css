@@ -54,3 +54,20 @@
 
 .cylinder-state-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 13px}.cylinder-state-grid>div{display:flex;flex-direction:column;gap:4px;padding:9px 8px;border:1px solid #344244;border-radius:4px;background:#11191b}.cylinder-state-grid span{color:#849390;font:8px var(--mono);letter-spacing:.06em}.cylinder-state-grid strong{color:#e4ece8;font:600 16px var(--display)}.cylinder-state-grid small{color:#91a09d;font:9px var(--mono)}
 @media(max-width:620px){.cylinder-state-grid{gap:5px}.cylinder-state-grid>div{padding:7px 5px}.cylinder-state-grid strong{font-size:13px}.cylinder-state-grid span{font-size:7px}}
+
+/* Engine systems telemetry and user-initiated procedural audio. */
+.systems-card{margin-top:16px;padding:14px;border:1px solid #344244;background:#11191b}
+.systems-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.systems-grid>div{display:flex;flex-direction:column;gap:5px;min-width:0;padding:9px 8px;border:1px solid #303d3e;background:#151f21}
+.systems-grid span{color:#879592;font:8px var(--mono);letter-spacing:.045em}
+.systems-grid strong{color:#e4ece8;font:600 15px var(--display);white-space:nowrap}
+.systems-grid small{color:#9aa9a5;font:9px var(--mono)}
+.system-alerts{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 13px}
+.system-alerts span{font:8px var(--mono);letter-spacing:.035em;padding:6px 8px;border:1px solid #354443}
+.healthy-state{color:#80c9a8;background:#14231e}
+.warning-state{color:#f2b46d;background:#2a2117;border-color:#805d32!important}
+.sound-button{border:1px solid #49605d;background:#182422;color:#9bd7c3;border-radius:3px;padding:8px 10px;font:9px var(--mono);letter-spacing:.04em;cursor:pointer;white-space:nowrap}
+.sound-button:hover,.sound-enabled{border-color:#7abfa9;background:#1b302a;color:#d0f4e7}
+.engine-3d-inline-four{height:660px}
+@media(max-width:900px){.systems-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.engine-3d-inline-four{height:560px}}
+@media(max-width:620px){.systems-grid{gap:5px}.systems-grid>div{padding:7px 5px}.systems-grid strong{font-size:13px}.systems-grid span{font-size:7px}.engine-3d-inline-four{height:470px}.sound-button{font-size:8px;padding:7px 8px}}
