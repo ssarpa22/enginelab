@@ -6,3 +6,6 @@ export type { CylinderThermodynamicsConfig, CylinderThermodynamicState } from ".
 
 export { calculateGasExchangeState, DEFAULT_GAS_EXCHANGE } from "./gas-exchange";
 export type { GasExchangeConfig, GasExchangeState } from "./gas-exchange";
+
+export { calculateCoupledCylinderState, DEFAULT_COUPLED_CYLINDER } from "./coupled-cylinder";
+export type { CoupledCylinderConfig, CoupledCylinderState } from "./coupled-cylinder";
