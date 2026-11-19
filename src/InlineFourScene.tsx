@@ -338,12 +338,12 @@ function InlineFourScene(props:Props){
    // Gas exchange and combustion are rendered in the dedicated 2D flow panel, not as 3D particles.
   });
   s.crank.rotation.z=-crankAngle;s.flywheel.rotation.z=-crankAngle;
-  const pinionX=props.starterActive ? .79 : .96;
+  const pinionX=props.starterActive ? .81 : .96;
   s.starterPinion.position.x=pinionX;
   s.starterPinion.rotation.z=props.starterActive?props.angle*Math.PI/180*4:0;
-  between(s.starterShaft,vec(.96,-.38,length/2+.28),vec(pinionX,0,length/2+.28));
-  s.cams.forEach(cam=>{cam.rotation.z=-coupling.camshaftAngleDeg*Math.PI/180;});
-  s.timingPulleys.forEach((pulley,index)=>{pulley.rotation.z=index===0?-crankAngle:-coupling.camshaftAngleDeg*Math.PI/180;});
+  between(s.starterShaft,vec(.96,-.38,-length/2-.12),vec(pinionX,0,-length/2-.12));
+  s.cams.forEach((cam,index)=>{const center=index===0?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;cam.rotation.z=(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
+  s.timingPulleys.forEach((pulley,index)=>{const center=index===1?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;pulley.rotation.z=index===0?-crankAngle:(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
   if(s.timingBeltMaterial.map)s.timingBeltMaterial.map.offset.x=-((props.angle%360)/360)*.24;
   // The oil pump remains static until its drive gear train is modelled.
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
