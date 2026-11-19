@@ -277,14 +277,14 @@ export default function InlineFourScene(props:Props){
    const flame=p.flame.material as THREE.MeshStandardMaterial;const intensity=clamp(gas.burnedFraction,0,1);p.flame.scale.set(.12+intensity*.36,.1+intensity*.26,.12+intensity*.36);flame.opacity=phase>350&&phase<500?intensity*.62:0;p.flame.visible=flame.opacity>.01;
   });
   s.crank.rotation.z=-crankAngle;s.flywheel.rotation.z=-crankAngle;
-  s.starterPinion.position.x=props.starterActive?.79:.96;
+  s.starterPinion.position.x=props.starterActive ? .79 : .96;
   s.starterPinion.rotation.z=props.starterActive?props.angle*Math.PI/180*4:0;
   s.cams.forEach(cam=>{cam.rotation.z=-coupling.camshaftAngleDeg*Math.PI/180;});
   s.timingPulleys.forEach((pulley,index)=>{pulley.rotation.z=index===0?-crankAngle:-coupling.camshaftAngleDeg*Math.PI/180;});
   s.oilPump.rotation.z=-crankAngle*2;
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
   s.metalMaterials[0]!.color.setHex(props.systems.headTemperatureC>180?0x9d5540:0x879599);
- },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems]);
+ },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems,props.starterActive]);
 
  return <div className="engine-3d-host engine-3d-inline-four" ref={host}>
   <div className="engine-3d-hint">ROTÁ · ZOOM · INSPECCIONÁ EL CONJUNTO</div>
