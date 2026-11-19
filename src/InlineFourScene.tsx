@@ -30,12 +30,12 @@ export default function InlineFourScene(props:Props){
   const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(width*2.8,deck*.95,length*.9);
   let renderer:THREE.WebGLRenderer;
   try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:"high-performance",stencil:false,depth:true,preserveDrawingBuffer:false});}catch{el.textContent="Este navegador no pudo iniciar WebGL.";return;}
-  const basePixelRatio=Math.min(window.devicePixelRatio||1,1.25);renderer.setPixelRatio(basePixelRatio);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;el.appendChild(renderer.domElement);
+  const basePixelRatio=Math.min(window.devicePixelRatio||1,1.05);renderer.setPixelRatio(basePixelRatio);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;el.appendChild(renderer.domElement);
   const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.065;controls.target.set(0,deck*.45,0);controls.minDistance=5;controls.maxDistance=32;controls.maxPolarAngle=Math.PI*.84;
   let resolution=createAdaptiveResolutionState(),interacting=false;
   const applyRenderScale=(scale:number)=>{renderer.setPixelRatio(basePixelRatio*scale);renderer.setSize(Math.max(1,el.clientWidth),Math.max(300,el.clientHeight),false);};
-  const onInteractionStart=()=>{interacting=true;if(resolution.scale>.78){resolution={...resolution,scale:.78,lastAdjustmentMs:performance.now()};applyRenderScale(resolution.scale);}};
-  const onInteractionEnd=()=>{interacting=false;};
+  const onInteractionStart=()=>{interacting=true;renderer.shadowMap.enabled=false;if(resolution.scale>.58){resolution={...resolution,scale:.58,lastAdjustmentMs:performance.now()};applyRenderScale(resolution.scale);}};
+  const onInteractionEnd=()=>{interacting=false;renderer.shadowMap.enabled=true;};
   controls.addEventListener("start",onInteractionStart);controls.addEventListener("end",onInteractionEnd);
   scene.add(new THREE.HemisphereLight(0xd9e8e6,0x1b2427,2.1));
   const key=new THREE.DirectionalLight(0xffe4c4,3.2);key.position.set(7,deck+7,length*.6);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.camera.near=.5;key.shadow.camera.far=30;key.shadow.bias=-.00025;scene.add(key);
@@ -57,21 +57,26 @@ export default function InlineFourScene(props:Props){
   }
   // Cast-iron block details: stiffening ribs, machined core plugs and visible head fasteners.
   const fastenerMaterial=mat(0xc1c9c7,.24,.9);
-  for(const side of [-1,1]){
-   for(let rib=0;rib<7;rib++){
-    const y=lowerY+.24+rib*(blockHeight-.48)/6;
-    const fin=new THREE.Mesh(new RoundedBoxGeometry(.075,.055,length*.86,3,.018),forged);
-    fin.position.set(side*(width/2+.018),y,0);fin.castShadow=true;scene.add(fin);
-   }
-   for(let i=0;i<4;i++){
-    const plug=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.035,32),steel);
-    plug.rotation.z=Math.PI/2;plug.position.set(side*(width/2+.035),lowerY+.34+i*.31,zAt(i));scene.add(plug);
-   }
+  const ribGeometry=new RoundedBoxGeometry(.075,.055,length*.86,3,.018);
+  const ribs=new THREE.InstancedMesh(ribGeometry,forged,14);
+  const ribTransform=new THREE.Object3D();let ribIndex=0;
+  for(const side of [-1,1])for(let rib=0;rib<7;rib++){
+   const y=lowerY+.24+rib*(blockHeight-.48)/6;
+   ribTransform.position.set(side*(width/2+.018),y,0);ribTransform.updateMatrix();ribs.setMatrixAt(ribIndex++,ribTransform.matrix);
   }
+  ribs.castShadow=true;scene.add(ribs);
+  for(const side of [-1,1])for(let i=0;i<4;i++){
+   const plug=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,.035,32),steel);
+   plug.rotation.z=Math.PI/2;plug.position.set(side*(width/2+.035),lowerY+.34+i*.31,zAt(i));scene.add(plug);
+  }
+  const headBoltGeometry=new THREE.CylinderGeometry(.052,.052,.065,6);
+  const headBolts=new THREE.InstancedMesh(headBoltGeometry,fastenerMaterial,16);
+  const boltTransform=new THREE.Object3D();let boltIndex=0;
   for(let i=0;i<4;i++)for(const side of [-1,1])for(const end of [-1,1]){
-   const bolt=new THREE.Mesh(new THREE.CylinderGeometry(.052,.052,.065,6),fastenerMaterial);
-   bolt.position.set(side*width*.43,deck+.11,end*length*.47+(i-1.5)*.035);bolt.rotation.y=Math.PI/6;bolt.castShadow=true;scene.add(bolt);
+   boltTransform.position.set(side*width*.43,deck+.11,end*length*.47+(i-1.5)*.035);
+   boltTransform.rotation.set(0,Math.PI/6,0);boltTransform.updateMatrix();headBolts.setMatrixAt(boltIndex++,boltTransform.matrix);
   }
+  headBolts.castShadow=true;scene.add(headBolts);
   // Machined liners and water jackets, sized from the actual bore/stroke.
   for(let i=0;i<4;i++){
    const z=zAt(i),liner=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5,bore*.5,stroke+.52,56,1,true),new THREE.MeshStandardMaterial({color:0x9ba8aa,metalness:.92,roughness:.2,side:THREE.DoubleSide}));liner.position.set(0,deck-stroke/2-.18,z);liner.castShadow=true;scene.add(liner);
