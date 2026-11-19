@@ -73,3 +73,13 @@
 @media(max-width:620px){.systems-grid{gap:5px}.systems-grid>div{padding:7px 5px}.systems-grid strong{font-size:13px}.systems-grid span{font-size:7px}.engine-3d-inline-four{height:470px}.sound-button{font-size:8px;padding:7px 8px}}
 
 @media(max-width:620px){.transport{flex-wrap:wrap}.transport-speed{width:100%;margin-left:0;justify-content:space-between}.speed-mode-buttons button{padding:7px 8px;font-size:8px}}
+
+
+/* CAD asset inspection modes */
+.scene-view-switch{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.scene-view-switch button{border:1px solid rgba(151,177,177,.18);background:rgba(17,27,29,.72);color:#8fa4a5;padding:9px 11px;border-radius:6px;font:600 10px/1 inherit;letter-spacing:.07em;cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+.scene-view-switch button:hover,.scene-view-switch button.active{background:rgba(86,154,143,.16);border-color:rgba(110,196,177,.55);color:#c9e8df}
+.cad-asset-host{position:relative;width:100%;height:100%;min-height:480px;overflow:hidden}
+.cad-asset-host canvas{display:block;width:100%;height:100%;outline:none}
+.cad-asset-status{position:absolute;right:16px;bottom:14px;max-width:75%;padding:8px 11px;border:1px solid rgba(139,171,167,.18);border-radius:5px;background:rgba(9,16,18,.82);color:#9db6b1;font:600 9px/1.4 inherit;letter-spacing:.08em;pointer-events:none}
+@media(max-width:760px){.scene-view-switch{width:100%;justify-content:flex-start}.scene-view-switch button{padding:8px 9px;font-size:9px}.cad-asset-host{min-height:360px}}
