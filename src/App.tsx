@@ -172,7 +172,7 @@ function App() {
     const sparkAngle=360-DEFAULT_VALVE_TIMING.sparkAdvanceBtdc;
     const tick=(time:number)=>{
       if(previous!==0){
-        const dt=Math.min((time-previous)/1000,.05);
+        const dt=Math.min((time-previous)/1000,.05)*visualRate;
         const actualRpm=damageRef.current.seized?0:crankshaftRef.current.rpm;
         const nextSimulation=advanceEngineSimulation(
           {systems:systemsRef.current,damage:damageRef.current},
@@ -189,7 +189,7 @@ function App() {
         if(nextSimulation.damage.seized){crankshaftRef.current={...crankshaftRef.current,rpm:0};setShaftRpm(0);setRunning(false);}
         const from=((crankshaftRef.current.cycleAngleDeg%720)+720)%720;
         const distance=(sparkAngle-from+720)%720;
-        const nextCrankshaft=nextSimulation.damage.seized?crankshaftRef.current:stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{targetRpm:setup.rpm,dtSeconds:dt*visualRate,loadTorqueNm:22,frictionTorqueNm:3,inertiaKgM2:.42,governorGainNmPerRpm:.8,maximumGasTorqueNm:220});
+        const nextCrankshaft=nextSimulation.damage.seized?crankshaftRef.current:stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{targetRpm:setup.rpm,dtSeconds:dt,loadTorqueNm:22,frictionTorqueNm:3,inertiaKgM2:.42,governorGainNmPerRpm:.8,maximumGasTorqueNm:220});
         crankshaftRef.current=nextCrankshaft;
         const advance=nextSimulation.damage.seized?0:((nextCrankshaft.cycleAngleDeg-from+720)%720);
         if(setup.rpm>0&&advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95);}
