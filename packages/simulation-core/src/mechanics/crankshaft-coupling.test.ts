@@ -51,4 +51,20 @@ describe("pressure-coupled inline-four crankshaft", () => {
     expect(next.rpm).toBeLessThan(1_000);
     expect(() => stepCrankshaft({ cycleAngleDeg: 0, rpm: 1_000 }, 0, { targetRpm: 1_000, dtSeconds: 0.2 })).toThrow(RangeError);
   });
+
+  it("uses the governor to settle near the requested speed under sustained gas torque", () => {
+    let state = { cycleAngleDeg: 0, rpm: 1_800 };
+    for (let step = 0; step < 2_000; step += 1) {
+      state = stepCrankshaft(state, 160, {
+        targetRpm: 1_800,
+        dtSeconds: 0.01,
+        loadTorqueNm: 22,
+        frictionTorqueNm: 3,
+        inertiaKgM2: 0.42,
+        governorGainNmPerRpm: 0.8
+      });
+    }
+    expect(state.rpm).toBeGreaterThan(1_800);
+    expect(state.rpm).toBeLessThan(2_300);
+  });
 });
