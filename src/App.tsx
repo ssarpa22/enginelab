@@ -6,7 +6,7 @@ import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulatio
 import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
 import EngineScene from "./InlineFourScene";
 import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
-import { advanceEngineSystems, calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState } from "../packages/simulation-core/src/mechanics/engine-systems";
+import { advanceEngineSystems, calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState, type EngineSystemsInput } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { advanceEngineDamage, INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simulation-core/src/mechanics/engine-damage";
 import EngineAudio from "./EngineAudio";
 
@@ -113,7 +113,7 @@ function App() {
   const [damage,setDamage]=useState<EngineDamageState>(INITIAL_ENGINE_DAMAGE);
   const damageRef=useRef<EngineDamageState>({...INITIAL_ENGINE_DAMAGE});
   const effectiveRpm=damage.seized?0:setup.rpm*damage.powerFactor;
-  const systemInputRef=useRef({rpm:INITIAL.rpm,load:.35,exhaustGasTemperatureC:450,ambientTemperatureC:25});
+  const systemInputRef=useRef<EngineSystemsInput>({rpm:INITIAL.rpm,load:.35,exhaustGasTemperatureC:450,ambientTemperatureC:25});
   const geometry=useMemo(()=>geometryFor(setup),[setup]);
   const crankAngle=(cycleAngle%360)*Math.PI/180;
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,effectiveRpm),[geometry,crankAngle,effectiveRpm]);
