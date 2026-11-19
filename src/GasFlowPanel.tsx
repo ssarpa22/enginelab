@@ -6,7 +6,7 @@ function GasFlowPanel({intakeFlowKgPerS,exhaustFlowKgPerS,exhaustTemperatureC,ex
  const intake=Math.max(0,intakeFlowKgPerS),exhaust=Math.max(0,exhaustFlowKgPerS);
  const exhaustIntensity=clamp(exhaust/.035,0,1),heat=clamp((exhaustTemperatureC-80)/800,0,1);
  const active=running&&exhaustIntensity>.015;
- return <section className="gas-flow-card" aria-label="Animación bidimensional del flujo de gases">
+ return <section className={`gas-flow-card ${running?"is-running":"is-paused"}`} aria-label="Animación bidimensional del flujo de gases">
   <div className="timing-card-heading">CIRCUITO DE GASES · VISTA 2D <span>CAUDAL 0D · TIEMPO SINCRONIZADO</span></div>
   <svg className="gas-flow-diagram" viewBox="0 0 760 210" role="img" aria-label="Admisión, cilindros, colector, catalizador, silenciador y salida de escape">
    <defs><linearGradient id="muffler" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#536267"/><stop offset=".5" stopColor="#263338"/><stop offset="1" stopColor="#11191c"/></linearGradient></defs>
