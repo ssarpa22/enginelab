@@ -37,7 +37,7 @@ function springPath(x:number,startY:number,endY:number){
   return points.join(" ");
 }
 type CylinderState={intakeMassFlowKgPerS:number;exhaustMassFlowKgPerS:number;pressurePa:number;temperatureK:number;burnedFraction:number;heatReleaseRateW:number};
-type Props = { geometry: EngineGeometry;angle:number;rpm:number;playing:boolean;visualRate:number;onTogglePlaying:()=>void;onVisualRateChange:(value:number)=>void;cylinderState:CylinderState };
+type Props = { geometry: EngineGeometry;angle:number;rpm:number;playing:boolean;visualRate:number;onTogglePlaying:()=>void;onVisualRateChange:(value:number)=>void;engineMode:"off"|"cranking"|"running";onStart:()=>void;cylinderState:CylinderState };
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 const fmt=(value:number,digits=1)=>Number.isFinite(value)?value.toFixed(digits):"—";
 const PHASE_LABEL:Record<Phase,string>={Intake:"ADMISIÓN",Compression:"COMPRESIÓN",Power:"EXPANSIÓN",Exhaust:"ESCAPE"};
@@ -48,7 +48,7 @@ const PHASE_COPY:Record<Phase,string>={
   Exhaust:"La leva de escape empuja su taqué y comprime el resorte. La válvula se separa del asiento y deja salir los gases."
 };
 
-export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,onTogglePlaying,onVisualRateChange,cylinderState}:Props){
+export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,onTogglePlaying,onVisualRateChange,engineMode,onStart,cylinderState}:Props){
   const cycleAngle=angle;
   const cycle=((cycleAngle%720)+720)%720;
   const phase:Phase=cycle<180?"Intake":cycle<360?"Compression":cycle<540?"Power":"Exhaust";
@@ -86,7 +86,8 @@ export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,
   return <section className="four-stroke-2d" aria-label="Corte bidimensional sincronizado con la simulación mecánica principal">
     <div className="four-stroke-2d-toolbar"><div><span className="view-live-dot"/><span>SECCIÓN LONGITUDINAL · CINEMÁTICA SINCRONIZADA</span></div><span className="view-angle">{fmt(cycle,0)}° / 720°</span></div>
     <div className="two-d-controls">
-      <button type="button" className="two-d-play" onClick={onTogglePlaying}>{playing?"Ⅱ PAUSAR MOTOR":"▶ REANUDAR MOTOR"}</button>
+      <button type="button" className="two-d-play" onClick={onTogglePlaying}>{playing?"Ⅱ PAUSAR SIMULACIÓN":"▶ REANUDAR SIMULACIÓN"}</button>
+      <button type="button" className="two-d-play" onClick={onStart} disabled={engineMode==="cranking"}>{engineMode==="running"?"DETENER MOTOR":engineMode==="cranking"?"ACCIONANDO…":"⏻ START"}</button>
       <label htmlFor="two-d-speed">ESCALA TEMPORAL <strong>{speedLabel} · {visualRate.toFixed(2)}×</strong></label>
       <input id="two-d-speed" type="range" min="0.15" max="1" step="0.05" value={visualRate} onChange={event=>onVisualRateChange(Number(event.target.value))}/>
       <div className="two-d-speed-ends"><span>MUY LENTA</span><span>VELOCIDAD NORMAL</span></div>
