@@ -47,3 +47,10 @@
 .thermo-values>div{min-width:0}
 .thermo-values strong{font-size:18px}
 @media(max-width:620px){.engine-3d-host{height:360px}.engine-3d-hint{right:7px;top:7px;font-size:7px}.engine-3d-axis{left:7px;bottom:7px}.thermo-values strong{font-size:16px}}
+
+/* Inline-four cutaway needs room to inspect all four bores and the timing drive. */
+.engine-3d-inline-four{height:540px}
+@media(max-width:620px){.engine-3d-inline-four{height:420px}}
+
+.cylinder-state-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 13px}.cylinder-state-grid>div{display:flex;flex-direction:column;gap:4px;padding:9px 8px;border:1px solid #344244;border-radius:4px;background:#11191b}.cylinder-state-grid span{color:#849390;font:8px var(--mono);letter-spacing:.06em}.cylinder-state-grid strong{color:#e4ece8;font:600 16px var(--display)}.cylinder-state-grid small{color:#91a09d;font:9px var(--mono)}
+@media(max-width:620px){.cylinder-state-grid{gap:5px}.cylinder-state-grid>div{padding:7px 5px}.cylinder-state-grid strong{font-size:13px}.cylinder-state-grid span{font-size:7px}}
