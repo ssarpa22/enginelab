@@ -90,9 +90,9 @@ export function advanceEngineDamage(
     oilOverheat ? 0.035 * Math.max(1, rpm / 2500) : 0.001
   ), 0, 100);
   const pistonScuffing = clamp(previous.pistonScuffing + dtSeconds * (
-    oilStarvation ? (0.42 + load) * Math.max(1, rpm / 2200) :
-    input.headTemperatureC > 235 ? 0.45 : 0.0005
-  ) + Math.max(0, thermalExpansionMm - 0.06) * 3, 0, 100);
+    (oilStarvation ? (0.42 + load) * Math.max(1, rpm / 2200) :
+    input.headTemperatureC > 235 ? 0.45 : 0.0005) + Math.max(0, thermalExpansionMm - 0.06) * 0.3
+  ), 0, 100);
   const valveTrainWear = clamp(previous.valveTrainWear + dtSeconds * (
     valveFloatTarget > 0 ? valveFloatTarget * (0.08 + load * 0.18) : 0.0004
   ), 0, 100);
