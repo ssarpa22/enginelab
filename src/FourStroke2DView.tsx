@@ -32,7 +32,7 @@ export default function FourStroke2DView({geometry,angle,rpm,phase,engineMode,sp
   const scale=150/geometry.strokeM;
   const radius=geometry.crankRadiusM*scale;
   const rod=geometry.connectingRodLengthM*scale;
-  const cx=370,crankY=366;
+  const cx=370,crankY=458;
   const crankX=cx+radius*Math.sin(crankAngle);
   const crankPinY=crankY-radius*Math.cos(crankAngle);
   const displacement=calculateSliderCrankState(geometry,crankAngle,rpm).pistonDisplacementM;
@@ -71,7 +71,7 @@ export default function FourStroke2DView({geometry,angle,rpm,phase,engineMode,sp
       <g className="section-grid">{Array.from({length:16},(_,i)=><line key={`gx${i}`} x1={20+i*48} y1="18" x2={20+i*48} y2="478"/>)}{Array.from({length:10},(_,i)=><line key={`gy${i}`} x1="18" y1={28+i*48} x2="742" y2={28+i*48}/>)}</g>
       <g className="section-hardware">
         <path d={`M${left-42} 34 H${right+42} V70 H${right+15} V246 H${right+31} V318 H${left-31} V246 H${left-15} V70 H${left-42} Z`} fill="url(#sectionBlock)" stroke="#91a0a2" strokeWidth="2"/>
-        <path d={`M${left-12} 72 V246 H${right+12} V72`} fill="none" stroke="#aebbbb" strokeWidth="5"/>
+        <path d={`M${left-12} 72 V318 H${right+12} V72`} fill="none" stroke="#aebbbb" strokeWidth="5"/>
         <path d={`M${left-38} 36 H${right+38} V65 H${left-38} Z`} fill="url(#sectionHatch)" stroke="#829194" strokeWidth="1.5"/>
         <rect x={left-13} y="69" width={boreWidth+26} height="13" rx="2" fill="#77878b" stroke="#bac5c2" strokeWidth="1.5"/>
         <path d={`M${left-12} 80 H${left-2} L${left-2} 50 H${left+5} L${left+5} 80 M${right+12} 80 H${right+2} L${right+2} 50 H${right-5} L${right-5} 80`} fill="none" stroke="#b5c1be" strokeWidth="5"/>
