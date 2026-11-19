@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createEngineGeometry, type EngineGeometry } from "../packages/simulation-core/src/geometry";
 import { calculateSliderCrankState } from "../packages/simulation-core/src/mechanics";
 import { millimetresToMetres, metresToMillimetres } from "../packages/simulation-core/src/units";
+import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, rpm: 1800 };
@@ -31,9 +32,12 @@ function phaseAt(angle: number): Phase {
 function Mechanism({ geometry, angle }: { geometry: EngineGeometry; angle: number }) {
   const crankAngle = angle % 360 * Math.PI / 180;
   const phase = phaseAt(angle);
-  const intakeOpen = phase === "Intake";
-  const exhaustOpen = phase === "Exhaust";
-  const spark = angle >= 356 && angle <= 366;
+  const valveState = calculateValveState(angle);
+  const intakeOpen = valveState.intakeOpen;
+  const exhaustOpen = valveState.exhaustOpen;
+  const intakeValveY = 43 + valveState.intakeLiftMm * 1.45;
+  const exhaustValveY = 43 + valveState.exhaustLiftMm * 1.45;
+  const spark = valveState.sparkActive;
   const scale = 130 / geometry.strokeM;
   const radius = geometry.crankRadiusM * scale;
   const rod = geometry.connectingRodLengthM * scale;
@@ -59,10 +63,10 @@ function Mechanism({ geometry, angle }: { geometry: EngineGeometry; angle: numbe
     <path d={`M ${cx-boreWidth/2-12} 24 V ${cy-76} M ${cx+boreWidth/2+12} 24 V ${cy-76}`} className="cylinder-wall"/>
     <path d={`M ${cx-boreWidth/2-12} 24 H ${cx+boreWidth/2+12}`} className="cylinder-head"/>
     <rect x={cx-boreWidth/2-12} y={headY-5} width={boreWidth+24} height="28" rx="3" className="head-metal"/>
-    <path d={`M ${intakeX} 14 L ${intakeX} ${intakeOpen?61:43}`} className={`valve-stem intake-valve ${intakeOpen?"valve-open":""}`}/>
-    <path d={`M ${intakeX-12} ${intakeOpen?61:43} L ${intakeX+12} ${intakeOpen?61:43}`} className="valve-head intake-valve"/>
-    <path d={`M ${exhaustX} 14 L ${exhaustX} ${exhaustOpen?61:43}`} className={`valve-stem exhaust-valve ${exhaustOpen?"valve-open":""}`}/>
-    <path d={`M ${exhaustX-12} ${exhaustOpen?61:43} L ${exhaustX+12} ${exhaustOpen?61:43}`} className="valve-head exhaust-valve"/>
+    <path d={`M ${intakeX} 14 L ${intakeX} ${intakeValveY}`} className={`valve-stem intake-valve ${intakeOpen?"valve-open":""}`}/>
+    <path d={`M ${intakeX-12} ${intakeValveY} L ${intakeX+12} ${intakeValveY}`} className="valve-head intake-valve"/>
+    <path d={`M ${exhaustX} 14 L ${exhaustX} ${exhaustValveY}`} className={`valve-stem exhaust-valve ${exhaustOpen?"valve-open":""}`}/>
+    <path d={`M ${exhaustX-12} ${exhaustValveY} L ${exhaustX+12} ${exhaustValveY}`} className="valve-head exhaust-valve"/>
     <path d={`M ${cx+3} 8 L ${cx+3} 50 L ${cx} 59 L ${cx-3} 50 L ${cx-3} 8 Z`} className="spark-plug"/>
     {spark&&<g className="spark-flash"><path d="M330 58 l-8 12 8-2-5 12 13-16-8 2 5-8z"/><circle cx="330" cy="68" r="17"/></g>}
     {intakeOpen&&<path d="M220 38 C245 38 270 48 295 75" className="gas-flow intake-flow" markerEnd="url(#intakeArrow)"/>}
@@ -95,6 +99,10 @@ function App() {
   const crankAngle=(cycleAngle%360)*Math.PI/180;
   const current=useMemo(()=>calculateSliderCrankState(geometry,crankAngle,setup.rpm),[geometry,crankAngle,setup.rpm]);
   const phase=phaseAt(cycleAngle);
+  const valveState=calculateValveState(cycleAngle);
+  const intakeOpen=valveState.intakeOpen;
+  const exhaustOpen=valveState.exhaustOpen;
+  const spark=valveState.sparkActive;
   const displacement=metresToMillimetres(current.pistonDisplacementM);
   const litres=geometry.totalDisplacementM3*1000;
   const rodMin=Math.floor(setup.strokeMm/2)+5;
@@ -120,10 +128,10 @@ function App() {
   },[running,setup.rpm,visualRate]);
   const reset=()=>{setSetup(INITIAL);setCycleAngle(0);setVisualRate(.5);setRunning(true);};
   const phaseCopy:Record<Phase,string>={
-    Intake:"La válvula de admisión abre y entra la mezcla aire-combustible.",
-    Compression:"Las dos válvulas cierran; el pistón comprime la mezcla.",
-    Power:"La bujía enciende la mezcla y la expansión empuja el pistón.",
-    Exhaust:"La válvula de escape abre y salen los gases quemados."
+    Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
+    Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
+    Power:"La combustión comienza cerca del PMS y la expansión empuja el pistón hacia el PMI.",
+    Exhaust:"El escape abre antes del PMI y evacúa los gases; cierra después del PMS."
   };
   return <main className="app-shell">
     <header className="topbar">
@@ -151,7 +159,8 @@ function App() {
           <div className="transport-speed"><label htmlFor="playback-speed">VELOCIDAD VISUAL</label><select id="playback-speed" value={visualRate} onChange={e=>setVisualRate(Number(e.target.value))}><option value="0.25">Muy lenta</option><option value="0.5">Lenta</option><option value="1">Normal</option></select></div>
         </div>
         <div className="angle-control"><div className="control-label-row"><label htmlFor="angle-control">RECORRER EL CICLO COMPLETO</label><output>{Math.round(cycleAngle)}° / 720°</output></div><input id="angle-control" type="range" min="0" max="720" step="1" value={cycleAngle} onChange={e=>{setRunning(false);setCycleAngle(Number(e.target.value));}}/><div className="range-ends"><span>0° · ADMISIÓN</span><span>360° · COMBUSTIÓN</span><span>720° · FIN</span></div></div>
-        <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p></div></div>
+        <div className="phase-explainer"><span className="phase-dot"/><div><strong>{phase}</strong><p>{phaseCopy[phase]}</p><div className="valve-live-state"><span className={intakeOpen?"is-open":"is-closed"}>ADMISIÓN: {intakeOpen?"ABIERTA":"CERRADA"} · {fmt(valveState.intakeLiftMm,1)} mm</span><span className={exhaustOpen?"is-open":"is-closed"}>ESCAPE: {exhaustOpen?"ABIERTO":"CERRADO"} · {fmt(valveState.exhaustLiftMm,1)} mm</span><span className={spark?"spark-live":""}>ENCENDIDO: {spark?"CHISPA":"EN ESPERA"}</span></div></div></div>
+        <div className="timing-card"><div className="timing-card-heading">CALADO DE DISTRIBUCIÓN <span>REFERENCIA INICIAL</span></div><div className="timing-grid"><div><span>Admisión abre</span><strong>{DEFAULT_VALVE_TIMING.intakeOpensBtdc}° antes PMS</strong></div><div><span>Admisión cierra</span><strong>{DEFAULT_VALVE_TIMING.intakeClosesAbdc}° después PMI</strong></div><div><span>Escape abre</span><strong>{DEFAULT_VALVE_TIMING.exhaustOpensBbdc}° antes PMI</strong></div><div><span>Escape cierra</span><strong>{DEFAULT_VALVE_TIMING.exhaustClosesAtdc}° después PMS</strong></div><div><span>Avance de encendido</span><strong>{DEFAULT_VALVE_TIMING.sparkAdvanceBtdc}° antes PMS</strong></div><div><span>Alzada máxima</span><strong>{DEFAULT_VALVE_TIMING.intakeMaxLiftMm} / {DEFAULT_VALVE_TIMING.exhaustMaxLiftMm} mm</strong></div></div><p>Perfil de leva simplificado con apertura y cierre progresivos; valores orientativos, no corresponden a un motor comercial específico.</p></div>
       </section>
       <aside className="panel controls-panel">
         <div className="panel-header"><div><div className="panel-kicker">02 / CONFIGURACIÓN</div><h2>Dimensiones del motor</h2></div><span className="settings-icon">⚙</span></div>
