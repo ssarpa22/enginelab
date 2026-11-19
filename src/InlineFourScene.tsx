@@ -41,7 +41,13 @@ function createCamLobeShape(kind:"intake"|"exhaust",centerCycle:number,cylinderO
   const localCycle=calculateCamLobeProfileCycleAngleDeg(angleDeg,centerCycle,cylinderOffset);
   const valve=calculateValveState(localCycle);
   const liftMm=kind==="intake"?valve.intakeLiftMm:valve.exhaustLiftMm;
-  const radius=.135+liftMm/1000*scale;
+  // A real cam is not a circular disc with a pointed bump: use a broad,
+  // asymmetrical flank and a smoothly rounded nose. The exponent softens the
+  // nose while preserving the lift envelope used by the valve train.
+  const maxLift=kind==="intake"?DEFAULT_VALVE_TIMING.intakeMaxLiftMm:DEFAULT_VALVE_TIMING.exhaustMaxLiftMm;
+  const normalizedLift=clamp(liftMm/Math.max(maxLift,1e-6),0,1);
+  const curvedLift=Math.pow(normalizedLift,.78);
+  const radius=.135+curvedLift*maxLift/1000*scale;
   const angle=angleDeg*Math.PI/180;
   const x=Math.cos(angle)*radius,y=Math.sin(angle)*radius;
   if(step===0)shape.moveTo(x,y);else shape.lineTo(x,y);
@@ -53,7 +59,7 @@ const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMate
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];};
-type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;oilPumpGears:THREE.Group[];flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;gasParticles:THREE.Mesh[][];gasParticleProgress:number[][];lastGasAngleDeg:number;gasParticleMaterials:THREE.MeshStandardMaterial[];};
+type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;oilPumpGears:THREE.Group[];flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;gasParticles:THREE.Mesh[][];gasParticleProgress:number[][];lastGasAngleDeg:number;gasParticleMaterials:THREE.MeshStandardMaterial[];sparkArcs:THREE.Group[];combustionFlames:THREE.Mesh[];};
 
 function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
@@ -254,8 +260,25 @@ function InlineFourScene(props:Props){
    parts.push({piston,rod,rodBigEnd,rodSmallEnd,intake,exhaust,intakeSprings,exhaustSprings,followers});
   }
   // DOHC centreline ignition hardware: ceramic insulators, hex bodies and four coil packs.
+  const sparkArcs:THREE.Group[]=[],combustionFlames:THREE.Mesh[]=[];
+  const sparkMaterial=new THREE.LineBasicMaterial({color:0xfff3a1,transparent:true,opacity:1});
+  const flameMaterials:THREE.MeshBasicMaterial[]=[];
   for(let i=0;i<4;i++){
    const z=zAt(i);
+   const spark=new THREE.Group();
+   const sparkPoints=[
+    [vec(-.035,0,0),vec(-.012,.035,.012),vec(.006,.012,-.008),vec(.028,.052,.006)],
+    [vec(.035,.004,0),vec(.014,.031,-.012),vec(-.004,.014,.01),vec(-.026,.047,-.004)]
+   ];
+   for(const points of sparkPoints){
+    const geometry=new THREE.BufferGeometry().setFromPoints(points);
+    spark.add(new THREE.Line(geometry,sparkMaterial));
+   }
+   spark.position.set(0,deck+.025,z);spark.visible=false;scene.add(spark);sparkArcs.push(spark);
+   const flameMaterial=new THREE.MeshBasicMaterial({color:0xff8a24,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending});
+   const flame=new THREE.Mesh(new THREE.SphereGeometry(1,24,16),flameMaterial);
+   flame.position.set(0,deck-.10,z);flame.scale.setScalar(.001);flame.visible=false;scene.add(flame);
+   combustionFlames.push(flame);flameMaterials.push(flameMaterial);
    const ceramic=new THREE.Mesh(new THREE.CylinderGeometry(.042,.052,.23,24),mat(0xe1e0d2,.28,.12));
    ceramic.position.set(0,deck+.47,z);scene.add(ceramic);
    const hex=new THREE.Mesh(new THREE.CylinderGeometry(.085,.085,.075,6),steel);
@@ -316,7 +339,7 @@ function InlineFourScene(props:Props){
   const floor=new THREE.Mesh(new THREE.CircleGeometry(Math.max(length,width)*.85,96),mat(0x182225,.9,.1));floor.rotation.x=-Math.PI/2;floor.position.y=-1.05;floor.receiveShadow=true;scene.add(floor);
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
-  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingBeltMaterial,oilPump:pump,oilPumpGears,flywheel,starterMotor,starterPinion,starterShaft,gasParticles,gasParticleProgress,lastGasAngleDeg:0,gasParticleMaterials};live.current=state;
+  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingBeltMaterial,oilPump:pump,oilPumpGears,flywheel,starterMotor,starterPinion,starterShaft,gasParticles,gasParticleProgress,lastGasAngleDeg:0,gasParticleMaterials,sparkArcs,combustionFlames};live.current=state;
   let previousFrameTime=performance.now();
   const render=()=>{const now=performance.now(),frameMs=now-previousFrameTime;previousFrameTime=now;
    const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;
@@ -359,6 +382,17 @@ function InlineFourScene(props:Props){
    p.followers.forEach((f,j)=>{const lift=j<2?liftIn:liftOut;f.position.y=deck+.76-lift;});
    // Gas beads are driven by thermodynamic mass flow and are hidden when the valve is seated.
    const gas=props.cylinderStates[i]!;
+   // Ignition is phased per cylinder on the 720° cycle. The arc is a short
+   // event; the expanding glow follows the thermodynamic burned-fraction state.
+   const ignition=calculateValveState(state.cycleAngleDeg).sparkActive;
+   s.sparkArcs[i]!.visible=ignition&&props.rpm>0;
+   const burn=clamp(gas.burnedFraction,0,1);
+   const flame=s.combustionFlames[i]!;
+   const flameMaterial=flame.material as THREE.MeshBasicMaterial;
+   flame.visible=burn>.008;
+   flame.scale.set(.08+burn*.42,.045+burn*.22,.08+burn*.42);
+   flameMaterial.opacity=clamp(burn*.82,0,.82);
+   flameMaterial.color.setHSL(.075-burn*.045,.98,.56);
    const intakeRate=clamp(Math.abs(gas.intakeMassFlowKgPerS)/.004,0,1),exhaustRate=clamp(Math.abs(gas.exhaustMassFlowKgPerS)/.004,0,1);
    s.gasParticles[i]!.forEach((bead,index)=>{const intakePath=index<4,rate=intakePath?intakeRate:exhaustRate,open=intakePath?state.intakeLiftActualMm:state.exhaustLiftActualMm;const active=rate>.015&&open>.05;bead.visible=active;if(!active)return;const direction=intakePath?1:-1;const previous=s.gasParticleProgress[i]![index]!;const progress=((previous+direction*rate*motionDeltaSeconds*.8)%1+1)%1;s.gasParticleProgress[i]![index]=progress;const start=intakePath?vec(-width*.50,deck-.04,z):vec(width*.50,deck-.04,z);const end=intakePath?vec(-bore*.28,deck+.02,z):vec(bore*.28,deck+.02,z);bead.position.lerpVectors(start,end,progress);bead.scale.setScalar(.55+rate*.8);});
   });
