@@ -18,7 +18,7 @@ describe("constrained inline-four mechanics",()=>{
       const r=geometry.crankRadiusM,L=geometry.connectingRodLengthM;
       const x=r*Math.sin(s.crankAngleRad);
       const y=L+r-s.pistonDisplacementM-r*Math.cos(s.crankAngleRad);
-      expect(Math.hypot(x,y-r*Math.cos(s.crankAngleRad))).toBeLessThan(L+1e-9);
+      expect(Math.hypot(x,y)).toBeCloseTo(L,8);
       expect(s.pistonDisplacementM).toBeGreaterThanOrEqual(0);
       expect(s.pistonDisplacementM).toBeLessThanOrEqual(geometry.strokeM);
     }
