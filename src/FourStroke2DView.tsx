@@ -162,8 +162,8 @@ export default function FourStroke2DView({geometry,angle,rpm,playing,visualRate,
         <text x={cx} y="488" textAnchor="middle" className="section-label">MECANISMO BIELA · MANIVELA</text>
       </g>
     </svg>
-    <div className="four-stroke-readouts"><div><span>FASE</span><strong>{PHASE_LABEL[phase]}</strong></div><div><span>RPM DEL CIGÜEÑAL</span><strong>{Math.round(rpm).toLocaleString("es-AR")} <small>RPM</small></strong></div><div><span>PRESIÓN ILUSTRATIVA</span><strong>{fmt(pressureBar,1)} <small>bar</small></strong></div><div><span>TEMPERATURA ILUSTRATIVA</span><strong>{tempC} <small>°C</small></strong></div></div>
+    <div className="four-stroke-readouts"><div><span>FASE</span><strong>{PHASE_LABEL[phase]}</strong></div><div><span>RPM DEL CIGÜEÑAL</span><strong>{Math.round(rpm).toLocaleString("es-AR")} <small>RPM</small></strong></div><div><span>PRESIÓN DEL CILINDRO</span><strong>{fmt(pressureBar,1)} <small>bar</small></strong></div><div><span>TEMPERATURA DEL GAS</span><strong>{tempC} <small>°C</small></strong></div></div>
     <div className="four-stroke-phase-note"><span className={`phase-indicator phase-${phase.toLowerCase()}`}/><div><strong>{PHASE_LABEL[phase]} · {fmt(cycle,0)}°</strong><p>{PHASE_COPY[phase]}</p></div><span className="four-stroke-status">{playing?"ANIMACIÓN ACTIVA":"EN PAUSA"}</span></div>
-    <GasFlowPanel intakeFlowKgPerS={intakeFlow} exhaustFlowKgPerS={exhaustFlow} exhaustTemperatureC={tempC} exhaustPressurePa={101325+exhaustFlow*180000} running={playing}/>
+    <GasFlowPanel intakeFlowKgPerS={intakeFlow} exhaustFlowKgPerS={exhaustFlow} exhaustTemperatureC={tempC} exhaustPressurePa={cylinderState.pressurePa} running={playing}/>
   </section>;
 }
