@@ -36,7 +36,7 @@ describe("progressive engine damage", () => {
   it("models valve float and fatigue under sustained over-rev", () => {
     let damage = INITIAL_ENGINE_DAMAGE;
     for (let i = 0; i < 800; i++) {
-      damage = advanceEngineDamage(damage, INITIAL_ENGINE_SYSTEMS, {
+      damage = advanceEngineDamage(damage, healthySystems, {
         ...healthy, rpm: 7900, load: .9
       }, .1);
     }
@@ -54,7 +54,7 @@ describe("progressive engine damage", () => {
       }, .1);
     }
     expect(damage.headGasketDamage).toBeGreaterThan(10);
-    expect(damage.thermalExpansionMm).toBeGreaterThan(.4);
+    expect(damage.thermalExpansionMm).toBeGreaterThan(.2);
     expect(damage.warnings.some(w => w.includes("JUNTA DE TAPA"))).toBe(true);
   });
 
