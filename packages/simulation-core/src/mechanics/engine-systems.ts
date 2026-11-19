@@ -1,6 +1,6 @@
 import type { EngineGeometry } from "../geometry/engine-geometry";
 import { calculateSliderCrankState } from "./slider-crank";
-import { calculateValveState } from "./valve-timing";
+import { calculateValveState, DEFAULT_VALVE_TIMING, type ValveTiming } from "./valve-timing";
 import { getInlineFourCylinderPhase } from "./inline-four";
 
 export type CylinderMechanicalState = {
@@ -79,7 +79,8 @@ export function calculateCylinderMechanics(
   globalCrankAngleDeg: number,
   globalCycleAngleDeg: number,
   cylinderIndex: number,
-  rpm: number
+  rpm: number,
+  timing: ValveTiming = DEFAULT_VALVE_TIMING
 ): CylinderMechanicalState {
   if (!Number.isFinite(rpm) || rpm < 0) throw new RangeError("RPM must be finite and non-negative.");
   const phase = getInlineFourCylinderPhase(globalCrankAngleDeg,globalCycleAngleDeg,cylinderIndex);
@@ -87,7 +88,7 @@ export function calculateCylinderMechanics(
   const k=calculateSliderCrankState(geometry,theta,rpm);
   const rodAngle=Math.asin(clamp(geometry.crankRadiusM*Math.sin(theta)/geometry.connectingRodLengthM,-1,1));
   const deckClearanceM=geometry.clearanceVolumePerCylinderM3/(Math.PI*geometry.boreM**2/4);
-  const valve=calculateValveState(phase.cycleAngleDeg);
+  const valve=calculateValveState(phase.cycleAngleDeg,timing);
   const pocketDepthMm=2.2;
   const minimumSafeClearanceMm=1.0;
   const clearanceBeforeValveMm=deckClearanceM*1000+k.pistonDisplacementM*1000+pocketDepthMm;
