@@ -132,7 +132,8 @@ export function stepCrankshaft(
   }
   if (dtSeconds === 0) return { ...state, cycleAngleDeg: wrap(state.cycleAngleDeg, 720) };
 
-  const gasTorque = clamp(indicatedGasTorqueNm, -maximumGasTorqueNm, maximumGasTorqueNm);
+  // A zero speed target represents fuel cut: the rotating assembly coasts down under load and friction.
+  const gasTorque = targetRpm === 0 ? 0 : clamp(indicatedGasTorqueNm, -maximumGasTorqueNm, maximumGasTorqueNm);
   const governorTorque = targetRpm > 0
     ? clamp((targetRpm - state.rpm) * governorGainNmPerRpm, -100, 100)
     : 0;
