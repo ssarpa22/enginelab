@@ -190,11 +190,11 @@ function App() {
           setDamage({...nextSimulation.damage});
           lastSystemPaint=time;
         }
-        if(nextSimulation.damage.seized){crankshaftRef.current={...crankshaftRef.current,rpm:0};setShaftRpm(0);setRunning(false);}
+        if(nextSimulation.damage.seized){crankshaftRef.current={...crankshaftRef.current,rpm:0};setShaftRpm(0);setEngineMode("off");setRunning(false);}
         const from=((crankshaftRef.current.cycleAngleDeg%720)+720)%720;
         const distance=(sparkAngle-from+720)%720;
         const starterTorque=engineMode==="cranking"?calculateStarterTorque(crankshaftRef.current.rpm,true):0;
-        const nextCrankshaft=nextSimulation.damage.seized?crankshaftRef.current:stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{targetRpm:engineMode==="running"?targetRpm:0,dtSeconds:dt,loadTorqueNm:engineMode==="cranking"?15:22,frictionTorqueNm:3,inertiaKgM2:.42,governorGainNmPerRpm:.8,maximumGasTorqueNm:220,externalTorqueNm:starterTorque});
+        const nextCrankshaft=nextSimulation.damage.seized?crankshaftRef.current:stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{targetRpm:engineMode==="running"?targetRpm:0,dtSeconds:dt,loadTorqueNm:engineMode==="cranking"?8:22,frictionTorqueNm:3,inertiaKgM2:.42,governorGainNmPerRpm:.8,maximumGasTorqueNm:220,externalTorqueNm:starterTorque});
         crankshaftRef.current=nextCrankshaft;
         const advance=nextSimulation.damage.seized?0:((nextCrankshaft.cycleAngleDeg-from+720)%720);
         if(engineMode==="running"&&advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95/visualRate);}
