@@ -66,15 +66,18 @@ export function calculateGasExchangeState(
   const referencePistonSpeed = Math.max(0.001, angularSpeed * geometry.crankRadiusM * 1.65);
   const speedFraction = clamp(Math.abs(piston.pistonVelocityMPerS) / referencePistonSpeed, 0, 1);
 
-  const intakePressure = config.intakePressurePa * (1 - config.intakePressureDropFraction * (piston.pistonVelocityMPerS > 0 ? speedFraction : 0));
-  const exhaustPressure = config.exhaustPressurePa * (1 + config.exhaustPressureRiseFraction * (piston.pistonVelocityMPerS < 0 ? speedFraction : 0));
+  const intakeCylinderPressure = config.intakePressurePa * (1 - config.intakePressureDropFraction * (piston.pistonVelocityMPerS > 0 ? speedFraction : 0));
+  const exhaustCylinderPressure = config.exhaustPressurePa * (1 + config.exhaustPressureRiseFraction * (piston.pistonVelocityMPerS < 0 ? speedFraction : 0));
+  const intakePressure = config.intakePressurePa;
+  const exhaustPressure = config.exhaustPressurePa;
   const intakeArea = Math.PI * geometry.boreM * 0.28 * (valves.intakeLiftMm / 1000);
   const exhaustArea = Math.PI * geometry.boreM * 0.28 * (valves.exhaustLiftMm / 1000);
 
   const intakeDensity = intakePressure / (config.gasConstantJPerKgK * config.intakeTemperatureK);
-  const exhaustDensity = cylinderPressurePa / (config.gasConstantJPerKgK * cylinderTemperatureK);
-  const intakeDelta = Math.max(0, intakePressure - cylinderPressurePa);
-  const exhaustDelta = Math.max(0, cylinderPressurePa - exhaustPressure);
+  const effectiveExhaustPressure = Math.max(cylinderPressurePa, exhaustCylinderPressure);
+  const exhaustDensity = effectiveExhaustPressure / (config.gasConstantJPerKgK * cylinderTemperatureK);
+  const intakeDelta = Math.max(0, intakePressure - Math.min(cylinderPressurePa, intakeCylinderPressure));
+  const exhaustDelta = Math.max(0, effectiveExhaustPressure - exhaustPressure);
   const intakeMassFlow = valves.intakeOpen
     ? config.dischargeCoefficient * intakeArea * Math.sqrt(2 * intakeDensity * intakeDelta)
     : 0;
@@ -85,7 +88,7 @@ export function calculateGasExchangeState(
   return {
     intakeMassFlowKgPerS: intakeMassFlow,
     exhaustMassFlowKgPerS: exhaustMassFlow,
-    cylinderPressurePa,
+    cylinderPressurePa: Math.min(cylinderPressurePa, intakeCylinderPressure),
     intakePressurePa: intakePressure,
     exhaustPressurePa: exhaustPressure,
     intakeValveLiftMm: valves.intakeLiftMm,
