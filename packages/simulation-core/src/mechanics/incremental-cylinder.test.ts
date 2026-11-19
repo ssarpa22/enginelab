@@ -42,6 +42,17 @@ describe("incremental cylinder thermodynamics", () => {
     }
   });
 
+  it("preserves every cycle when advanced in small high-RPM crank-angle steps", () => {
+    let state = createIncrementalCylinderState(geometry);
+    const start = state.integratedAngleDeg;
+    for (let offset = 4; offset <= 1_440; offset += 4) {
+      state = advanceIncrementalCylinderState(state, geometry, (start + offset) % 720, 8_000);
+    }
+    expect(state.integratedAngleDeg).toBeCloseTo(start + 1_440, 7);
+    expect(state.cycleAngleDeg).toBeCloseTo(start % 720, 7);
+    expect(Number.isFinite(state.pressurePa)).toBe(true);
+  });
+
   it("does not advance when the requested angle is unchanged", () => {
     const state = createIncrementalCylinderState(geometry);
     const same = advanceIncrementalCylinderState(state, geometry, state.cycleAngleDeg, 1800);
