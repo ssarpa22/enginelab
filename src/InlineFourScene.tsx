@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -19,7 +19,7 @@ function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,materia
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;throw:THREE.Group;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];inGas:THREE.Mesh[];outGas:THREE.Mesh[];flame:THREE.Mesh;};
 type SceneState={parts:Part[];intakeCurves:THREE.CatmullRomCurve3[];exhaustCurves:THREE.CatmullRomCurve3[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingPulleys:THREE.Group[];oilPump:THREE.Group;flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;};
 
-export default function InlineFourScene(props:Props){
+function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
  useEffect(()=>{
   const el=host.current;if(!el)return;
@@ -183,6 +183,8 @@ export default function InlineFourScene(props:Props){
     const face=new THREE.Mesh(new THREE.LatheGeometry(valveProfile,48),mat(color,.2,.94));face.castShadow=true;g.add(face);
     const keeper=new THREE.Mesh(new THREE.CylinderGeometry(.065,.065,.075,20),steel);keeper.position.y=.205;g.add(keeper);
     const retainer=new THREE.Mesh(new THREE.CylinderGeometry(.115,.115,.065,24),bronze);retainer.position.y=.255;g.add(retainer);
+    const guide=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,.24,24),dark);guide.position.set(x,deck+.25,zz);scene.add(guide);
+    const seat=new THREE.Mesh(new THREE.TorusGeometry(.285,.026,10,48),steel);seat.rotation.x=Math.PI/2;seat.position.set(x,deck+.015,zz);scene.add(seat);
     g.position.set(x,deck+.45,zz);scene.add(g);return g;
    };
    const makeSpring=(x:number,zz:number)=>{const points:THREE.Vector3[]=[];for(let k=0;k<=96;k++){const t=k/96,a=t*Math.PI*2*9;points.push(vec(Math.cos(a)*.095,-.22+t*.44,Math.sin(a)*.095));}const spring=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),220,.016,8,false),steel);spring.position.set(x,deck+.46,zz);spring.castShadow=true;scene.add(spring);return spring;};
@@ -291,3 +293,5 @@ export default function InlineFourScene(props:Props){
   <div className="engine-3d-axis">BLOQUE · VÁLVULAS · DISTRIBUCIÓN · VOLANTE · BURRO DE ARRANQUE</div>
  </div>;
 }
+
+export default memo(InlineFourScene);
