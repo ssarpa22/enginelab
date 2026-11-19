@@ -198,3 +198,6 @@
 .section-spring-seat{fill:none;stroke:#7f918e;stroke-width:3;stroke-linecap:round}
 .section-cam-lobe{fill:#bd9865;stroke:#f0c98c;stroke-width:1.5;stroke-linejoin:round}
 .section-follower{fill:#9ca9a6;stroke:#e0e8e3;stroke-width:1.5}
+
+.legend-note{color:#778983;font-size:8px;letter-spacing:.02em}
+@media(max-width:620px){.legend-note{font-size:6px}}
