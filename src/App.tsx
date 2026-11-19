@@ -209,9 +209,11 @@ function App() {
               <div><span>ACEITE · TEMPERATURA</span><strong>{fmt(systems.oilTemperatureC,1)} <small>°C</small></strong></div>
               <div><span>ACEITE · PRESIÓN</span><strong>{fmt(systems.oilPressureBar,2)} <small>bar</small></strong></div>
               <div><span>CAUDAL DE ACEITE</span><strong>{fmt(systems.oilFlowLPerMin,1)} <small>L/min</small></strong></div>
+              <div><span>NIVEL DE ACEITE</span><strong>{fmt(systems.oilLevelL,1)} <small>L</small></strong></div>
               <div><span>REFRIGERANTE</span><strong>{fmt(systems.coolantTemperatureC,1)} <small>°C</small></strong></div>
               <div><span>PRESIÓN REFRIGERANTE</span><strong>{fmt(systems.coolantPressureBar,2)} <small>bar</small></strong></div>
               <div><span>CAUDAL REFRIGERANTE</span><strong>{fmt(systems.coolantFlowLPerMin,1)} <small>L/min</small></strong></div>
+              <div><span>NIVEL REFRIGERANTE</span><strong>{fmt(systems.coolantLevelL,1)} <small>L</small></strong></div>
               <div><span>TEMPERATURA DE TAPA</span><strong>{fmt(systems.headTemperatureC,1)} <small>°C</small></strong></div>
               <div><span>TEMPERATURA DE ESCAPE</span><strong>{fmt(systems.exhaustTemperatureC,0)} <small>°C</small></strong></div>
             </div>
