@@ -135,7 +135,9 @@ export function advanceEngineSystems(
   input: EngineSystemsInput,
   dtSeconds: number
 ): EngineSystemsState {
+  const optional=[input.oilLeakLPerMin,input.coolantLeakLPerMin,input.oilPickupAvailability,input.coolantPumpEfficiency];
   if (![input.rpm,input.load,input.exhaustGasTemperatureC,dtSeconds].every(Number.isFinite) ||
+      optional.some(value=>value!==undefined&&!Number.isFinite(value)) ||
       input.rpm<0 || dtSeconds<0 || dtSeconds>1) {
     throw new RangeError("Invalid engine-system input or integration step.");
   }
