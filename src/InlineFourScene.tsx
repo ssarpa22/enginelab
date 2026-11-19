@@ -23,7 +23,7 @@ export default function InlineFourScene(props:Props){
   const scene=new THREE.Scene();scene.background=new THREE.Color(0x101719);scene.fog=new THREE.Fog(0x101719,18,38);
   const scale=2.2/props.geometry.strokeM,stroke=props.geometry.strokeM*scale,r=props.geometry.crankRadiusM*scale,rodLength=props.geometry.connectingRodLengthM*scale;
   const bore=props.geometry.boreM*scale,clearance=props.geometry.clearanceVolumePerCylinderM3/(Math.PI*props.geometry.boreM**2/4)*scale;
-  const pistonTopOffset=.32,deck=rodLength+r+pistonTopOffset+clearance,crankY=0,spacing=Math.max(bore*1.3,bore+.72),length=spacing*3+bore*1.15,width=bore*1.55;
+  const pistonTopOffset=.32,deck=rodLength+r+pistonTopOffset+clearance,crankY=0,spacing=Math.max(bore*1.3,bore+.72),length=spacing*3+bore*1.15,width=Math.max(bore*1.55,(2*r+bore*.2+.012*scale)*1.1);
   const zAt=(i:number)=>(i-1.5)*spacing;
   const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(width*2.8,deck*.95,length*.9);
   let renderer:THREE.WebGLRenderer;
@@ -60,7 +60,7 @@ export default function InlineFourScene(props:Props){
   const cams:THREE.Group[]=[];
   for(const x of [-bore*.28,bore*.28]){
    const cam=new THREE.Group(),shaft=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,length*.94,28),bronze);shaft.rotation.x=Math.PI/2;cam.add(shaft);
-   for(let i=0;i<4;i++)for(const dx of [-.19,.19]){
+   for(let i=0;i<4;i++)for(const dx of [-bore*.12,bore*.12]){
     const lobe=new THREE.Mesh(new THREE.SphereGeometry(.16,20,16),steel);lobe.scale.set(.78,1.35,1.08);lobe.position.set(0,.12,zAt(i)+dx);cam.add(lobe);
    }
    for(let i=0;i<5;i++){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.16,20),dark);cap.rotation.x=Math.PI/2;cap.position.z=-length*.43+i*length*.215;cam.add(cap);}
@@ -85,11 +85,11 @@ export default function InlineFourScene(props:Props){
   const parts:Part[]=[],intakeCurves:THREE.CatmullRomCurve3[]=[],exhaustCurves:THREE.CatmullRomCurve3[]=[];
   for(let i=0;i<4;i++){
    const z=zAt(i),piston=new THREE.Group();
-   const crown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.465,bore*.465,.22,48),steel);crown.position.y=.20;crown.castShadow=true;piston.add(crown);
+   const crown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.22,48),steel);crown.position.y=.20;crown.castShadow=true;piston.add(crown);
    const bowl=new THREE.Mesh(new THREE.CylinderGeometry(bore*.25,bore*.25,.025,32),mat(0x879294,.38,.8));bowl.position.y=.315;piston.add(bowl);
-   for(const y of [.08,-.015,-.11]){const ring=new THREE.Mesh(new THREE.TorusGeometry(bore*.465,.018,9,48),y===-.11?bronze:dark);ring.rotation.x=Math.PI/2;ring.position.y=y;piston.add(ring);}
+   for(const y of [.08,-.015,-.11]){const ring=new THREE.Mesh(new THREE.TorusGeometry(bore*.5-.00035*props.geometry.boreM*scale,.012,9,48),y===-.11?bronze:dark);ring.rotation.x=Math.PI/2;ring.position.y=y;piston.add(ring);}
    const pin=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,bore*.78,24),bronze);pin.rotation.z=Math.PI/2;pin.position.y=-.04;piston.add(pin);
-   const skirt=new THREE.Mesh(new THREE.CylinderGeometry(bore*.445,bore*.455,.24,40,1,true),aluminium);skirt.position.y=-.17;piston.add(skirt);
+   const skirt=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.24,40,1,true),aluminium);skirt.position.y=-.17;piston.add(skirt);
    scene.add(piston);
    const rod=new THREE.Mesh(new THREE.CylinderGeometry(.095,.15,1,20),forged);rod.castShadow=true;scene.add(rod);
    const intake:THREE.Group[]=[],exhaust:THREE.Group[]=[],intakeSprings:THREE.Mesh[]=[],exhaustSprings:THREE.Mesh[]=[],followers:THREE.Mesh[]=[];
@@ -99,7 +99,7 @@ export default function InlineFourScene(props:Props){
     const retainer=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.06,18),bronze);retainer.position.y=.22;g.add(retainer);
     g.position.set(x,deck+.45,zz);scene.add(g);return g;
    };
-   const makeSpring=(x:number,zz:number)=>{const spring=new THREE.Mesh(new THREE.CylinderGeometry(.075,.075,.34,16,12,true),steel);spring.position.set(x,deck+.63,zz);scene.add(spring);return spring;};
+   const makeSpring=(x:number,zz:number)=>{const points:THREE.Vector3[]=[];for(let k=0;k<=72;k++){const t=k/72,a=t*Math.PI*2*7;points.push(vec(x+Math.cos(a)*.075,deck+.25+t*.42,zz+Math.sin(a)*.075));}const spring=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),180,.012,7,false),steel);spring.position.set(0,0,0);scene.add(spring);return spring;};
    for(const zz of [-bore*.12,bore*.12]){const x=-bore*.28;intake.push(makeValve(x,z+zz,0x70cdb6));intakeSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    for(const zz of [-bore*.12,bore*.12]){const x=bore*.28;exhaust.push(makeValve(x,z+zz,0xe4a05a));exhaustSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    const inCurve=makeTube(scene,[vec(-width*.52,deck+.04,z+.16),vec(-width*.58,deck-.08,z+.16),vec(-width*.66,deck-.25,z+.16),vec(-width*.72,deck-.35,z+.16)],.12,intakeMaterial);
@@ -147,8 +147,8 @@ export default function InlineFourScene(props:Props){
    between(p.rod,wristPin,crankPin);
    p.throw.rotation.z=0;
    const liftIn=state.intakeLiftActualMm/1000*(2.2/props.geometry.strokeM),liftOut=state.exhaustLiftActualMm/1000*(2.2/props.geometry.strokeM);
-   p.intake.forEach((v,j)=>{v.position.y=deck+.45-liftIn;p.intakeSprings[j]!.scale.y=Math.max(.35,1-liftIn/.48);});
-   p.exhaust.forEach((v,j)=>{v.position.y=deck+.45-liftOut;p.exhaustSprings[j]!.scale.y=Math.max(.35,1-liftOut/.48);});
+   p.intake.forEach((v,j)=>{v.position.y=deck+.45-liftIn;p.intakeSprings[j]!.scale.y=Math.max(.35,1-liftIn/.42);p.intakeSprings[j]!.position.y=deck+.46-liftIn/2;});
+   p.exhaust.forEach((v,j)=>{v.position.y=deck+.45-liftOut;p.exhaustSprings[j]!.scale.y=Math.max(.35,1-liftOut/.42);p.exhaustSprings[j]!.position.y=deck+.46-liftOut/2;});
    p.followers.forEach((f,j)=>{const lift=j<2?liftIn:liftOut;f.position.y=deck+.76-lift;});
    const intake=calculateValveState(phase).intakeOpen&&Math.abs(gas.intakeFlowKgPerS)>.00001;
    const exhaust=calculateValveState(phase).exhaustOpen&&Math.abs(gas.exhaustFlowKgPerS)>.00001;
