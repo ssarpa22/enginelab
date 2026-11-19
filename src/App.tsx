@@ -134,7 +134,7 @@ function App() {
       indicatedPowerW:Math.max(0,state.indicatedPowerW*damage.powerFactor-frictionPowerPerCylinder),
       heatReleaseRateW:state.heatReleaseRateW*(1-damage.misfireProbability)
     };
-  }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor]);
+  }), [geometry, cycleAngle, effectiveRpm, damage.misfireProbability, damage.powerFactor, damage.frictionTorqueNm]);
   const thermodynamics = cylinderStates[0]!;
   const mechanicalStates = useMemo(() => [0,1,2,3].map(index =>
     calculateCylinderMechanics(geometry,cycleAngle%360,cycleAngle,index,effectiveRpm,DEFAULT_VALVE_TIMING,damage.valveFloatSeverity,damage.thermalExpansionMm)
