@@ -54,13 +54,17 @@ export function calculateInlineFourCrankCoupling(
   crankAngleDeg: number,
   rpm: number,
   cylinderPressuresPa: readonly number[],
-  ambientPressurePa = 101_325
+  ambientPressurePa = 101_325,
+  globalCycleAngleDeg = crankAngleDeg
 ): InlineFourCrankCoupling {
   if (!Number.isFinite(crankAngleDeg) || !Number.isFinite(rpm) || rpm < 0) {
     throw new RangeError("Crank angle must be finite and rpm must be finite and non-negative.");
   }
   if (cylinderPressuresPa.length !== 4 || cylinderPressuresPa.some(value => !Number.isFinite(value) || value < 0)) {
     throw new RangeError("Exactly four finite, non-negative cylinder pressures are required.");
+  }
+  if (!Number.isFinite(globalCycleAngleDeg)) {
+    throw new RangeError("Global cycle angle must be finite.");
   }
   if (!Number.isFinite(ambientPressurePa) || ambientPressurePa < 0) {
     throw new RangeError("Ambient pressure must be finite and non-negative.");
@@ -71,6 +75,7 @@ export function calculateInlineFourCrankCoupling(
 
   const areaM2 = Math.PI * geometry.boreM ** 2 / 4;
   const crankAngle = wrap(crankAngleDeg, 360);
+  const globalCycleAngle = wrap(globalCycleAngleDeg, 720);
   const cylinders = cylinderPressuresPa.map((pressurePa, index) => {
     const localAngleDeg = wrap(crankAngle + INLINE_FOUR_CRANK_PHASES_DEG[index]!, 360);
     const theta = localAngleDeg * Math.PI / 180;
@@ -87,7 +92,7 @@ export function calculateInlineFourCrankCoupling(
     return {
       cylinderNumber: (index + 1) as 1 | 2 | 3 | 4,
       crankAngleDeg: localAngleDeg,
-      cycleAngleDeg: wrap(crankAngle + INLINE_FOUR_CYCLE_OFFSETS_DEG[index]!, 720),
+      cycleAngleDeg: wrap(globalCycleAngle + INLINE_FOUR_CYCLE_OFFSETS_DEG[index]!, 720),
       pistonDisplacementM: slider.pistonDisplacementM,
       pistonVelocityMPerS: slider.pistonVelocityMPerS,
       connectingRodAngleRad: Math.asin(radius * sinTheta / rod),
@@ -98,7 +103,7 @@ export function calculateInlineFourCrankCoupling(
 
   return {
     crankAngleDeg: crankAngle,
-    camshaftAngleDeg: wrap(crankAngle / 2, 180),
+    camshaftAngleDeg: wrap(globalCycleAngle / 2, 360),
     cylinders,
     indicatedGasTorqueNm: cylinders.reduce((sum, cylinder) => sum + cylinder.gasTorqueNm, 0)
   };
