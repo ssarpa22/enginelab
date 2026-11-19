@@ -13,6 +13,7 @@ import { INITIAL_ENGINE_DAMAGE, type EngineDamageState } from "../packages/simul
 import { calculateInlineFourCrankCoupling, stepCrankshaft, type CrankshaftDynamicState } from "../packages/simulation-core/src/mechanics/crankshaft-coupling";
 import EngineAudio from "./EngineAudio";
 import { calculateStarterTorque, starterCanDisengage } from "../packages/simulation-core/src/mechanics/starter-system";
+import { consumeFixedSteps, createFixedStepAccumulator, FIXED_PHYSICS_STEP_SECONDS } from "../packages/simulation-core/src/mechanics/fixed-step-clock";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
 const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: 10.5, rpm: 1800 };
@@ -173,35 +174,67 @@ function App() {
   useEffect(()=>{
     if(!running)return;
     let frame=0,previous=0,sparkTimer=0,lastSystemPaint=0,lastUiPaint=0;
+    let accumulator=createFixedStepAccumulator();
+    let activeEngineMode=engineMode;
     const sparkAngle=360-DEFAULT_VALVE_TIMING.sparkAdvanceBtdc;
     const tick=(time:number)=>{
       if(previous!==0){
-        const dt=Math.min((time-previous)/1000,.05)*visualRate;
-        const actualRpm=damageRef.current.seized?0:crankshaftRef.current.rpm;
-        const nextSimulation=advanceEngineSimulation(
-          {systems:systemsRef.current,damage:damageRef.current},
-          {...systemInputRef.current,rpm:actualRpm},
-          dt
-        );
-        systemsRef.current=nextSimulation.systems;
-        damageRef.current=nextSimulation.damage;
-        if(time-lastSystemPaint>120||nextSimulation.damage.seized){
-          setSystems({...nextSimulation.systems});
-          setDamage({...nextSimulation.damage});
+        const timing=consumeFixedSteps(accumulator,(time-previous)/1000,visualRate);
+        accumulator=timing.state;
+        let seized=false;
+        for(let step=0;step<timing.stepCount;step++){
+          const dt=FIXED_PHYSICS_STEP_SECONDS;
+          const actualRpm=damageRef.current.seized?0:crankshaftRef.current.rpm;
+          const nextSimulation=advanceEngineSimulation(
+            {systems:systemsRef.current,damage:damageRef.current},
+            {...systemInputRef.current,rpm:actualRpm},
+            dt
+          );
+          systemsRef.current=nextSimulation.systems;
+          damageRef.current=nextSimulation.damage;
+          if(nextSimulation.damage.seized){
+            crankshaftRef.current={...crankshaftRef.current,rpm:0};
+            activeEngineMode="off";
+            seized=true;
+            break;
+          }
+          const from=((crankshaftRef.current.cycleAngleDeg%720)+720)%720;
+          const distance=(sparkAngle-from+720)%720;
+          const starterTorque=activeEngineMode==="cranking"?calculateStarterTorque(crankshaftRef.current.rpm,true):0;
+          const nextCrankshaft=stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{
+            targetRpm:activeEngineMode==="running"?targetRpm:0,
+            dtSeconds:dt,
+            loadTorqueNm:activeEngineMode==="cranking"?8:22,
+            frictionTorqueNm:3,
+            inertiaKgM2:.42,
+            governorGainNmPerRpm:.8,
+            maximumGasTorqueNm:220,
+            externalTorqueNm:starterTorque
+          });
+          crankshaftRef.current=nextCrankshaft;
+          const advance=(nextCrankshaft.cycleAngleDeg-from+720)%720;
+          if(activeEngineMode==="running"&&advance>0&&distance<=advance){
+            setSparkFlash(true);
+            window.clearTimeout(sparkTimer);
+            sparkTimer=window.setTimeout(()=>setSparkFlash(false),95/visualRate);
+          }
+          if(activeEngineMode==="cranking"&&starterCanDisengage(nextCrankshaft.rpm))activeEngineMode="running";
+          if(activeEngineMode==="running"&&nextCrankshaft.rpm<8&&targetRpm===0)activeEngineMode="off";
+        }
+        if(activeEngineMode!==engineMode)setEngineMode(activeEngineMode);
+        if(time-lastSystemPaint>120||seized){
+          setSystems({...systemsRef.current});
+          setDamage({...damageRef.current});
           lastSystemPaint=time;
         }
-        if(nextSimulation.damage.seized){crankshaftRef.current={...crankshaftRef.current,rpm:0};setShaftRpm(0);setEngineMode("off");setRunning(false);}
-        const from=((crankshaftRef.current.cycleAngleDeg%720)+720)%720;
-        const distance=(sparkAngle-from+720)%720;
-        const starterTorque=engineMode==="cranking"?calculateStarterTorque(crankshaftRef.current.rpm,true):0;
-        const nextCrankshaft=nextSimulation.damage.seized?crankshaftRef.current:stepCrankshaft(crankshaftRef.current,gasTorqueRef.current,{targetRpm:engineMode==="running"?targetRpm:0,dtSeconds:dt,loadTorqueNm:engineMode==="cranking"?8:22,frictionTorqueNm:3,inertiaKgM2:.42,governorGainNmPerRpm:.8,maximumGasTorqueNm:220,externalTorqueNm:starterTorque});
-        crankshaftRef.current=nextCrankshaft;
-        const advance=nextSimulation.damage.seized?0:((nextCrankshaft.cycleAngleDeg-from+720)%720);
-        if(engineMode==="running"&&advance>0&&distance<=advance){setSparkFlash(true);window.clearTimeout(sparkTimer);sparkTimer=window.setTimeout(()=>setSparkFlash(false),95/visualRate);}
-        const next=nextCrankshaft.cycleAngleDeg;
-        if(engineMode==="cranking"&&starterCanDisengage(nextCrankshaft.rpm))setEngineMode("running");
-        if(engineMode==="running"&&nextCrankshaft.rpm<8&&targetRpm===0)setEngineMode("off");
-        if(time-lastUiPaint>=33){setCycleAngle(next);setShaftRpm(nextCrankshaft.rpm);lastUiPaint=time;}
+        if(seized){
+          setShaftRpm(0);
+          setRunning(false);
+        }else if(time-lastUiPaint>=33){
+          setCycleAngle(crankshaftRef.current.cycleAngleDeg);
+          setShaftRpm(crankshaftRef.current.rpm);
+          lastUiPaint=time;
+        }
       }
       previous=time;
       frame=requestAnimationFrame(tick);
