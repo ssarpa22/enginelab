@@ -97,7 +97,7 @@ export function calculateCylinderMechanics(
   const exhaustActual=Math.min(valve.exhaustLiftMm,maxSafeLiftMm);
   const minimumValveClearanceMm=clearanceBeforeValveMm-Math.max(intakeActual,exhaustActual);
   const valveCollision=valve.intakeLiftMm>maxSafeLiftMm+1e-6||valve.exhaustLiftMm>maxSafeLiftMm+1e-6;
-  const skirtClearanceMm=geometry.boreM*1000*.0007;
+  const skirtClearanceMm=geometry.boreM*1000*.0007-Math.max(0,thermalExpansionMm);
   const rodBigEndRadiusMm=geometry.boreM*1000*.10;
   const crankcaseInnerHalfWidthMm=Math.max(geometry.boreM*1000*.775,
     geometry.crankRadiusM*1000+rodBigEndRadiusMm+6);
