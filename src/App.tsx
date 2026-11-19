@@ -8,7 +8,7 @@ import EngineScene from "./InlineFourScene";
 import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
-const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: s.compressionRatio, rpm: 1800 };
+const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: 10.5, rpm: 1800 };
 const TAU = Math.PI * 2;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const fmt = (n: number, digits = 1) => Number.isFinite(n) ? n.toFixed(digits) : "—";
@@ -113,7 +113,7 @@ function App() {
     const phase = getInlineFourCylinderPhase(cycleAngle % 360, cycleAngle, index);
     return calculateCoupledCylinderState(geometry, phase.cycleAngleDeg, setup.rpm);
   }), [geometry, cycleAngle, setup.rpm]);
-  const thermodynamics = cylinderStates[0];
+  const thermodynamics = cylinderStates[0]!;
   const intakeOpen=valveState.intakeOpen;
   const exhaustOpen=valveState.exhaustOpen;
   const spark=valveState.sparkActive;
