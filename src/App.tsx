@@ -7,7 +7,7 @@ import { calculateCoupledCylinderState } from "../packages/simulation-core/src/m
 import EngineScene from "./EngineScene";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number; rpm: number };
-const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: s.compressionRatio, rpm: 1800 };
+const INITIAL: Setup = { boreMm: 86, strokeMm: 86, rodMm: 143, compressionRatio: 10.5, rpm: 1800 };
 const TAU = Math.PI * 2;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 const fmt = (n: number, digits = 1) => Number.isFinite(n) ? n.toFixed(digits) : "—";
