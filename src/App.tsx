@@ -5,6 +5,7 @@ import { millimetresToMetres, metresToMillimetres } from "../packages/simulation
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "../packages/simulation-core/src/mechanics/valve-timing";
 import { calculateCoupledCylinderState } from "../packages/simulation-core/src/mechanics/coupled-cylinder";
 import EngineScene from "./InlineFourScene";
+import CadAssetScene from "./CadAssetScene";
 import { getInlineFourCylinderPhase } from "../packages/simulation-core/src/mechanics/inline-four";
 import { calculateCylinderMechanics, INITIAL_ENGINE_SYSTEMS, type EngineSystemsState, type EngineSystemsInput } from "../packages/simulation-core/src/mechanics/engine-systems";
 import { advanceEngineSimulation } from "../packages/simulation-core/src/mechanics/engine-simulation";
@@ -106,6 +107,7 @@ function App() {
   const [cycleAngle,setCycleAngle]=useState(0);
   const cycleAngleRef=useRef(0);
   const [running,setRunning]=useState(true);
+  const [assetView,setAssetView]=useState<"simulation"|"cutaway"|"piston">("simulation");
   const [visualRate,setVisualRate]=useState(1);
   const [sparkFlash,setSparkFlash]=useState(false);
   const [systems,setSystems]=useState<EngineSystemsState>(INITIAL_ENGINE_SYSTEMS);
@@ -225,8 +227,8 @@ function App() {
     </section>
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
-        <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>Conjunto mecánico y distribución</h2></div><span className="panel-chip"><span className="status-dot"/> VISTA ANIMADA</span></div>
-        <div className="drawing-stage"><EngineScene geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} mechanics={mechanicalStates} systems={systems} cylinderStates={cylinderStates.map(state => ({ pressurePa: state.pressurePa, temperatureK: state.temperatureK, burnedFraction: state.burnedFraction, intakeFlowKgPerS: state.intakeMassFlowKgPerS, exhaustFlowKgPerS: state.exhaustMassFlowKgPerS }))} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></div>
+        <div className="panel-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>{assetView==="simulation"?"Conjunto mecánico y distribución":assetView==="cutaway"?"Modelo CAD · motor completo":"Modelo CAD · conjunto pistón y biela"}</h2></div><div className="scene-view-switch" role="group" aria-label="Modo de visualización"><button type="button" className={assetView==="simulation"?"active":""} onClick={()=>setAssetView("simulation")}>SIMULACIÓN</button><button type="button" className={assetView==="cutaway"?"active":""} onClick={()=>setAssetView("cutaway")}>MOTOR CAD</button><button type="button" className={assetView==="piston"?"active":""} onClick={()=>setAssetView("piston")}>PISTÓN CAD</button></div></div>
+        <div className="drawing-stage">{assetView==="simulation"?<><EngineScene geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} mechanics={mechanicalStates} systems={systems} cylinderStates={cylinderStates.map(state => ({ pressurePa: state.pressurePa, temperatureK: state.temperatureK, burnedFraction: state.burnedFraction, intakeFlowKgPerS: state.intakeMassFlowKgPerS, exhaustFlowKgPerS: state.exhaustMassFlowKgPerS }))} sparkFlash={sparkFlash}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> MEZCLA FRESCA</span><span><i className="legend-exhaust"/> GASES QUEMADOS</span><span><i className="legend-spark"/> COMBUSTIÓN</span></div></>:<CadAssetScene asset={assetView}/>}</div>
         <div className="transport">
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div><EngineAudio rpm={effectiveRpm} running={running&&!damage.seized} load={clamp(.18+meanBurn*.58+(1-damage.powerFactor)*.12,.12,.95)}/>
