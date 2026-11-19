@@ -1,4 +1,4 @@
-export const STARTER_CUTOUT_RPM = 180;
+export const STARTER_CUTOUT_RPM = 65;
 export const STARTER_STALL_TORQUE_NM = 48;
 export const STARTER_NO_LOAD_RPM = 420;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
-import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, stepCrankshaft } from "./crankshaft-coupling";
+import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, MAX_CRANKSHAFT_RPM, stepCrankshaft } from "./crankshaft-coupling";
 
 const geometry = createEngineGeometry({
   cylinderCount: 4,
@@ -47,9 +47,10 @@ describe("pressure-coupled inline-four crankshaft", () => {
   });
 
   it("integrates gas torque into shared crankshaft speed and angle", () => {
-    const initial = { cycleAngleDeg: 0, rpm: 1_000 };
-    const next = stepCrankshaft(initial, 100, { targetRpm: 1_500, dtSeconds: 0.01, loadTorqueNm: 10, frictionTorqueNm: 2 });
+    const initial = { cycleAngleDeg: 0, rpm: 50 };
+    const next = stepCrankshaft(initial, 100, { targetRpm: 80, dtSeconds: 0.01, loadTorqueNm: 10, frictionTorqueNm: 2 });
     expect(next.rpm).toBeGreaterThan(initial.rpm);
+    expect(next.rpm).toBeLessThanOrEqual(MAX_CRANKSHAFT_RPM);
     expect(next.cycleAngleDeg).toBeGreaterThan(initial.cycleAngleDeg);
   });
 
@@ -73,10 +74,10 @@ describe("pressure-coupled inline-four crankshaft", () => {
   });
 
   it("uses the governor to settle near the requested speed under sustained gas torque", () => {
-    let state = { cycleAngleDeg: 0, rpm: 1_800 };
+    let state = { cycleAngleDeg: 0, rpm: 80 };
     for (let step = 0; step < 2_000; step += 1) {
       state = stepCrankshaft(state, 160, {
-        targetRpm: 1_800,
+        targetRpm: 80,
         dtSeconds: 0.01,
         loadTorqueNm: 22,
         frictionTorqueNm: 3,
@@ -84,7 +85,17 @@ describe("pressure-coupled inline-four crankshaft", () => {
         governorGainNmPerRpm: 0.8
       });
     }
-    expect(state.rpm).toBeGreaterThan(1_800);
-    expect(state.rpm).toBeLessThan(2_300);
+    expect(state.rpm).toBeGreaterThan(80);
+    expect(state.rpm).toBeLessThanOrEqual(MAX_CRANKSHAFT_RPM);
+  });
+
+  it("hard-limits the crankshaft even when a caller requests an unsafe target", () => {
+    const next = stepCrankshaft({ cycleAngleDeg: 0, rpm: 99 }, 220, {
+      targetRpm: 8_000,
+      dtSeconds: 0.01,
+      loadTorqueNm: 0,
+      frictionTorqueNm: 0
+    });
+    expect(next.rpm).toBe(MAX_CRANKSHAFT_RPM);
   });
 });

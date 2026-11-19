@@ -145,7 +145,7 @@ function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props
     const nowMs = performance.now();
     lastAngle.current = cycleAngle;
     lastAudioTime.current = nowMs;
-    if (!active || !enabled || !running || engineMode !== "running" || rpm < 120 || previous === null || previousTime === null) return;
+    if (!active || !enabled || !running || engineMode !== "running" || rpm <= 0 || previous === null || previousTime === null) return;
 
     // Estimate angular travel over the UI sampling interval from the live shaft
     // speed. This preserves every firing pulse even when a frame spans 360°+
@@ -157,7 +157,7 @@ function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props
 
     const { context, pulseBuffer, pulseFilter } = active;
     const pulseLevel = .16 + normalizeEngineLoad(load) * .26;
-    const intervalSeconds = 30 / Math.max(120, rpm);
+    const intervalSeconds = 30 / Math.max(1, rpm);
     const firstCrossingDeg = 180 - (previous % 180);
     const firstDelay = Math.max(0, firstCrossingDeg / (rpm * 6) - elapsed);
     for (let i = 0; i < Math.min(crossings, 12); i++) {

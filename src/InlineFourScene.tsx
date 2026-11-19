@@ -53,7 +53,7 @@ const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMate
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(scene:THREE.Scene,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,12,false),material);mesh.castShadow=true;scene.add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];};
-type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;oilPumpGears:THREE.Group[];flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;gasParticles:THREE.Mesh[][];gasParticleMaterials:THREE.MeshStandardMaterial[];};
+type SceneState={parts:Part[];crank:THREE.Group;cams:THREE.Group[];renderer:THREE.WebGLRenderer;controls:OrbitControls;frame:number;oilMaterial:THREE.MeshStandardMaterial;coolantMaterial:THREE.MeshStandardMaterial;metalMaterials:THREE.MeshStandardMaterial[];timingBeltMaterial:THREE.MeshStandardMaterial;oilPump:THREE.Group;oilPumpGears:THREE.Group[];flywheel:THREE.Group;starterMotor:THREE.Group;starterPinion:THREE.Group;starterShaft:THREE.Mesh;gasParticles:THREE.Mesh[][];gasParticleProgress:number[][];lastGasMotionTimeMs:number;gasParticleMaterials:THREE.MeshStandardMaterial[];};
 
 function InlineFourScene(props:Props){
  const host=useRef<HTMLDivElement>(null),live=useRef<SceneState|null>(null);
@@ -210,7 +210,7 @@ function InlineFourScene(props:Props){
   const timingBeltMaterial=new THREE.MeshStandardMaterial({color:0x343d40,map:beltTexture,roughness:.72,metalness:.08});
   const beltCurve=timingBeltPath(pulleyPositions.map(([x,y,r])=>({x,y,r:r+.045})),length/2+.28);
   const belt=new THREE.Mesh(new THREE.TubeGeometry(beltCurve,256,.045,10,true),timingBeltMaterial);belt.castShadow=true;timing.add(belt);scene.add(timing);
-  const parts:Part[]=[],gasParticles:THREE.Mesh[][]=[],gasParticleMaterials=[new THREE.MeshStandardMaterial({color:0x7de4c7,emissive:0x1a7563,emissiveIntensity:.7,roughness:.3}),new THREE.MeshStandardMaterial({color:0xf2a36a,emissive:0x8a3d19,emissiveIntensity:.65,roughness:.35})];
+  const parts:Part[]=[],gasParticles:THREE.Mesh[][]=[],gasParticleProgress:number[][]=[],gasParticleMaterials=[new THREE.MeshStandardMaterial({color:0x7de4c7,emissive:0x1a7563,emissiveIntensity:.7,roughness:.3}),new THREE.MeshStandardMaterial({color:0xf2a36a,emissive:0x8a3d19,emissiveIntensity:.65,roughness:.35})];
   for(let i=0;i<4;i++){
    const z=zAt(i),piston=new THREE.Group();
    const crown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.22,64),steel);crown.position.y=.20;crown.castShadow=true;piston.add(crown);
@@ -250,7 +250,7 @@ function InlineFourScene(props:Props){
    for(const zz of [-bore*.12,bore*.12]){const x=bore*.28;exhaust.push(makeValve(x,z+zz,0xe4a05a));exhaustSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);scene.add(bucket);followers.push(bucket);}
    makeTube(scene,[vec(-width*.52,deck+.04,z+.16),vec(-width*.58,deck-.08,z+.16),vec(-width*.66,deck-.25,z+.16),vec(-width*.72,deck-.35,z+.16)],.12,intakeMaterial);
    makeTube(scene,[vec(width*.72,deck-.35,z-.16),vec(width*.66,deck-.25,z-.16),vec(width*.58,deck-.08,z-.16),vec(width*.52,deck+.04,z-.16)],.12,exhaustMaterial);
-   const cylinderGasParticles:THREE.Mesh[]=[];for(let particle=0;particle<8;particle++){const material=particle%2===0?gasParticleMaterials[0]!:gasParticleMaterials[1]!;const bead=new THREE.Mesh(new THREE.SphereGeometry(.025,10,8),material);bead.visible=false;scene.add(bead);cylinderGasParticles.push(bead);}gasParticles.push(cylinderGasParticles);
+   const cylinderGasParticles:THREE.Mesh[]=[];for(let particle=0;particle<8;particle++){const material=particle%2===0?gasParticleMaterials[0]!:gasParticleMaterials[1]!;const bead=new THREE.Mesh(new THREE.SphereGeometry(.025,10,8),material);bead.visible=false;scene.add(bead);cylinderGasParticles.push(bead);}gasParticles.push(cylinderGasParticles);gasParticleProgress.push(Array.from({length:8},(_,particle)=>(particle%4)/4));
    parts.push({piston,rod,rodBigEnd,rodSmallEnd,intake,exhaust,intakeSprings,exhaustSprings,followers});
   }
   // DOHC centreline ignition hardware: ceramic insulators, hex bodies and four coil packs.
@@ -316,7 +316,7 @@ function InlineFourScene(props:Props){
   const floor=new THREE.Mesh(new THREE.CircleGeometry(Math.max(length,width)*.85,96),mat(0x182225,.9,.1));floor.rotation.x=-Math.PI/2;floor.position.y=-1.05;floor.receiveShadow=true;scene.add(floor);
   const resize=()=>{const w=Math.max(1,el.clientWidth),h=Math.max(300,el.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
   const observer=new ResizeObserver(resize);observer.observe(el);resize();
-  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingBeltMaterial,oilPump:pump,oilPumpGears,flywheel,starterMotor,starterPinion,starterShaft,gasParticles,gasParticleMaterials};live.current=state;
+  const state:SceneState={parts,crank,cams,renderer,controls,frame:0,oilMaterial,coolantMaterial,metalMaterials,timingBeltMaterial,oilPump:pump,oilPumpGears,flywheel,starterMotor,starterPinion,starterShaft,gasParticles,gasParticleProgress,lastGasMotionTimeMs:0,gasParticleMaterials};live.current=state;
   let previousFrameTime=performance.now();
   const render=()=>{const now=performance.now(),frameMs=now-previousFrameTime;previousFrameTime=now;
    const next=updateAdaptiveResolution(resolution,frameMs,now,interacting);if(next.scale!==resolution.scale)applyRenderScale(next.scale);resolution=next;
@@ -330,6 +330,9 @@ function InlineFourScene(props:Props){
   const rod=props.geometry.connectingRodLengthM*(2.2/props.geometry.strokeM),clearance=props.geometry.clearanceVolumePerCylinderM3/(Math.PI*props.geometry.boreM**2/4)*(2.2/props.geometry.strokeM);
   const bore=props.geometry.boreM*(2.2/props.geometry.strokeM),pistonTopOffset=.32,deck=rod+r+pistonTopOffset+clearance,spacing=Math.max(bore*1.18,bore+.18),length=spacing*3+bore*1.15,width=Math.max(bore*1.55,(2*r+bore*.2+.012*(2.2/props.geometry.strokeM))*1.1),crankAngle=((props.angle%360)+360)%360*Math.PI/180;
   const coupling=calculateInlineFourCrankCoupling(props.geometry,props.angle%360,props.rpm,props.cylinderStates.map(state=>state.pressurePa),101325,props.angle);
+  const motionNow=performance.now();
+  const motionDeltaSeconds=s.lastGasMotionTimeMs>0?clamp((motionNow-s.lastGasMotionTimeMs)/1000,0,.1):0;
+  s.lastGasMotionTimeMs=motionNow;
   s.parts.forEach((p,i)=>{
    const z=(i-1.5)*spacing,theta=crankAngle+(INLINE_FOUR_CRANK_PHASES_DEG[i]??0)*Math.PI/180;
    const state=props.mechanics[i],kinematics=coupling.cylinders[i];if(!state||!kinematics)return;
@@ -355,8 +358,8 @@ function InlineFourScene(props:Props){
    p.followers.forEach((f,j)=>{const lift=j<2?liftIn:liftOut;f.position.y=deck+.76-lift;});
    // Gas beads are driven by thermodynamic mass flow and are hidden when the valve is seated.
    const gas=props.cylinderStates[i]!;
-   const intakeRate=clamp(Math.abs(gas.intakeMassFlowKgPerS)/.035,0,1),exhaustRate=clamp(Math.abs(gas.exhaustMassFlowKgPerS)/.035,0,1);
-   s.gasParticles[i]!.forEach((bead,index)=>{const intakePath=index<4,rate=intakePath?intakeRate:exhaustRate,open=intakePath?state.intakeLiftActualMm:state.exhaustLiftActualMm;const active=rate>.015&&open>.05;bead.visible=active;if(!active)return;const lane=index%4,progress=(((props.angle/720)*(intakePath?1:-1)+lane*.25)%1+1)%1;const start=intakePath?vec(-width*.50,deck-.04,z):vec(width*.50,deck-.04,z);const end=intakePath?vec(-bore*.28,deck+.02,z):vec(bore*.28,deck+.02,z);bead.position.lerpVectors(start,end,progress);bead.scale.setScalar(.55+rate*.8);});
+   const intakeRate=clamp(Math.abs(gas.intakeMassFlowKgPerS)/.004,0,1),exhaustRate=clamp(Math.abs(gas.exhaustMassFlowKgPerS)/.004,0,1);
+   s.gasParticles[i]!.forEach((bead,index)=>{const intakePath=index<4,rate=intakePath?intakeRate:exhaustRate,open=intakePath?state.intakeLiftActualMm:state.exhaustLiftActualMm;const active=rate>.015&&open>.05;bead.visible=active;if(!active)return;const direction=intakePath?1:-1;const previous=s.gasParticleProgress[i]![index]!;const progress=((previous+direction*rate*motionDeltaSeconds*.8)%1+1)%1;s.gasParticleProgress[i]![index]=progress;const start=intakePath?vec(-width*.50,deck-.04,z):vec(width*.50,deck-.04,z);const end=intakePath?vec(-bore*.28,deck+.02,z):vec(bore*.28,deck+.02,z);bead.position.lerpVectors(start,end,progress);bead.scale.setScalar(.55+rate*.8);});
   });
   s.crank.rotation.z=-crankAngle;s.flywheel.rotation.z=-crankAngle;
   const pinionX=props.starterActive ? .81 : .96;
@@ -364,12 +367,14 @@ function InlineFourScene(props:Props){
   s.starterPinion.rotation.z=props.starterActive?props.angle*Math.PI/180*4:0;
   between(s.starterShaft,vec(.96,-.38,-length/2-.12),vec(pinionX,0,-length/2-.12));
   s.cams.forEach((cam,index)=>{const center=index===0?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;cam.rotation.z=(-coupling.camshaftAngleDeg+center/2)*Math.PI/180;});
-  // The oil pump is cam-driven through a 2:1 crank-to-pump reduction; meshing gears counter-rotate.
-  s.oilPumpGears.forEach((gear,index)=>{gear.rotation.z=(index===0?1:-1)*crankAngle*.5;});
+  // Pump gears remain stationary until a visible mechanical drive is modeled.
+  // Oil pressure and flow remain an RPM-dependent lumped system, not a claim of
+  // fully modeled pump-gear kinematics.
+  void s.oilPumpGears;
   // Sprockets are children of the crankshaft/camshaft groups; their angular
   // velocity and phase are therefore exactly inherited from their own shafts.
   if(s.timingBeltMaterial.map)s.timingBeltMaterial.map.offset.x=-((props.angle%360)/360)*.24;
-  // Oil-pump gears follow the camshaft-driven pump shaft.
+  // Oil-pump gear meshes are intentionally not animated without a visible drive train.
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
   s.metalMaterials[0]!.color.setHex(props.systems.headTemperatureC>180?0x9d5540:0x879599);
  },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems,props.starterActive]);

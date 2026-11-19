@@ -201,3 +201,6 @@
 
 .legend-note{color:#778983;font-size:8px;letter-spacing:.02em}
 @media(max-width:620px){.legend-note{font-size:6px}}
+
+/* A paused crankshaft also pauses every animated gas-flow indicator. */
+.four-stroke-2d.is-paused .section-intake-flow,.four-stroke-2d.is-paused .section-exhaust-flow,.four-stroke-2d.is-paused .section-chamber-flow{animation-play-state:paused}
