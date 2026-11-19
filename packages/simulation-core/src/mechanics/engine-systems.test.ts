@@ -47,7 +47,7 @@ describe("constrained inline-four mechanics",()=>{
   });
 
   it("reduces effective valve lift when the valve train floats",()=>{
-    const stable=calculateCylinderMechanics(geometry,250,250,0,7800,DEFAULT_VALVE_TIMING,0);
+    const stable=calculateCylinderMechanics(geometry,90,90,0,7800,DEFAULT_VALVE_TIMING,0);
     const floating=calculateCylinderMechanics(geometry,250,250,0,7800,DEFAULT_VALVE_TIMING,.8);
     expect(floating.intakeLiftActualMm).toBeLessThan(stable.intakeLiftActualMm);
     expect(floating.valveFloatSeverity).toBeCloseTo(.8);
