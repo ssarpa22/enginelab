@@ -12,7 +12,7 @@ const geometry = createEngineGeometry({
 });
 
 describe("pressure-coupled inline-four crankshaft", () => {
-  it("uses one fixed 800 RPM idle setpoint and matching hard ceiling", () => {
+  it("keeps the 800 RPM default while allowing a higher experimental ceiling", () => {
     expect(DEFAULT_ENGINE_IDLE_RPM).toBe(800);
     expect(MAX_CRANKSHAFT_RPM).toBe(DEFAULT_ENGINE_IDLE_RPM);
   });

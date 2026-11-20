@@ -70,6 +70,14 @@ describe("constrained inline-four mechanics",()=>{
     expect(running.oilFlowLPerMin).toBeGreaterThan(0);
   });
 
+  it("maintains a viable oil film at hot idle with a full sump",()=>{
+    const hotIdle={...INITIAL_ENGINE_SYSTEMS,oilTemperatureC:95};
+    const next=advanceEngineSystems(hotIdle,{rpm:800,load:.25,exhaustGasTemperatureC:420},.05);
+    expect(next.oilPressureBar).toBeGreaterThan(1);
+    expect(next.bearingFilmRatio).toBeGreaterThan(.48);
+    expect(next.lubricationWarning).toBe(false);
+  });
+
   it("opens the thermostat as coolant warms and rejects heat",()=>{
     const warm={...INITIAL_ENGINE_SYSTEMS,coolantTemperatureC:100,headTemperatureC:120};
     const next=advanceEngineSystems(warm,{rpm:3000,load:.7,exhaustGasTemperatureC:720},.25);

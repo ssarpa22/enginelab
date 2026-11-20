@@ -40,6 +40,23 @@ describe("coupled engine simulation step", () => {
     expect(state.damage.seized).toBe(false);
   });
 
+  it("survives 30 seconds of hot idle with healthy oil pressure and film", () => {
+    let state: EngineSimulationState = {
+      systems: { ...INITIAL_ENGINE_SYSTEMS, oilTemperatureC: 95 },
+      damage: INITIAL_ENGINE_DAMAGE
+    };
+    for (let i = 0; i < 600; i++) {
+      state = advanceEngineSimulation(state, {
+        rpm: 800, load: .35, exhaustGasTemperatureC: 420
+      }, .05);
+    }
+    expect(state.systems.oilPressureBar).toBeGreaterThan(1);
+    expect(state.systems.bearingFilmRatio).toBeGreaterThan(.48);
+    expect(state.damage.bearingWear).toBeLessThan(.1);
+    expect(state.damage.pistonScuffing).toBeLessThan(.1);
+    expect(state.damage.seized).toBe(false);
+  });
+
   it("turns oil pickup failure into pressure loss, bearing wear and eventual seizure", () => {
     let state = initial;
     for (let i = 0; i < 500; i++) {
