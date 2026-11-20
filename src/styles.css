@@ -211,3 +211,43 @@
 @media(max-width:620px){.scene-section-toolbar{gap:4px}.scene-section-toolbar button{font-size:7px;padding:7px 6px}}
 
 .timing-drive-failed{color:#ff7777!important;text-shadow:0 0 10px #a32d2d66}
+
+
+/* Stable engine transport: start/pause/speed on row one, audio controls below. */
+.transport{
+  display:grid;
+  grid-template-columns:max-content max-content minmax(0,1fr);
+  grid-template-areas:"start pause speed" "audio audio audio";
+  align-items:center;
+  gap:10px 12px;
+  min-width:0;
+  padding:14px 18px;
+}
+.transport>.starter-button{grid-area:start;min-width:124px;max-width:100%;white-space:normal;line-height:1.35}
+.transport>.transport-button{grid-area:pause;flex:none}
+.transport>.engine-audio-control{grid-area:audio;min-width:0}
+.transport>.transport-speed{
+  grid-area:speed;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px 10px;
+  width:auto!important;
+  min-width:0;
+  margin:0!important;
+}
+.transport .speed-mode-label{white-space:nowrap}
+.transport .speed-mode-buttons{display:flex;flex-wrap:nowrap;gap:5px;min-width:0}
+.transport .speed-mode-buttons button{flex:0 0 auto;white-space:nowrap}
+@media(max-width:760px){
+  .transport{grid-template-columns:max-content max-content minmax(0,1fr)}
+  .transport>.transport-speed{grid-column:1/-1;justify-content:flex-start}
+}
+@media(max-width:520px){
+  .transport{grid-template-columns:minmax(0,1fr) 42px;grid-template-areas:"start pause" "speed speed" "audio audio";gap:10px;padding:12px}
+  .transport>.starter-button{width:100%;min-width:0}
+  .transport>.transport-speed{grid-column:1/-1;justify-content:space-between}
+  .transport .speed-mode-buttons{flex-wrap:wrap;justify-content:flex-end}
+  .transport .speed-mode-buttons button{padding:7px 8px;font-size:8px}
+}
