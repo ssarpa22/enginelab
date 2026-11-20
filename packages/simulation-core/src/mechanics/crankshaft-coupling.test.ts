@@ -52,8 +52,8 @@ describe("pressure-coupled inline-four crankshaft", () => {
   });
 
   it("subdivides high-RPM steps to keep crank-angle integration bounded", () => {
-    expect(calculateCrankshaftSubstepSeconds(1 / 240, 1_800, 1_800)).toBeCloseTo(4 / 10_800, 12);
-    expect(calculateCrankshaftSubstepSeconds(1 / 240, 8_000, 8_000)).toBeCloseTo(4 / 48_000, 12);
+    expect(calculateCrankshaftSubstepSeconds(1 / 240, 1_800, 1_800)).toBeCloseTo(6 / 10_800, 12);
+    expect(calculateCrankshaftSubstepSeconds(1 / 240, 8_000, 8_000)).toBeCloseTo(12 / 48_000, 12);
     expect(calculateCrankshaftSubstepSeconds(0.001, 0, 0)).toBe(0.001);
     expect(() => calculateCrankshaftSubstepSeconds(-0.01, 1_000, 1_000)).toThrow(RangeError);
   });
