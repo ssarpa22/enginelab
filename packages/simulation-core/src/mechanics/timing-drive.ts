@@ -2,6 +2,7 @@ export const INLINE_FOUR_TIMING_DRIVE = {
   crankPulleyTeeth: 24,
   camPulleyTeeth: 48,
   crankPitchRadiusM: 0.038,
+  beltPretensionN: 350,
   maximumBeltTensionN: 4_800,
   camshaftInertiaKgM2: 0.018,
   camshaftDragTorqueNm: 0.22
@@ -21,7 +22,7 @@ export interface TimingDriveStepInput {
   crankCycleAngleDeg: number;
   crankRpm: number;
   dtSeconds: number;
-  crankDriveTorqueNm: number;
+  timingDriveTorqueNm: number;
 }
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -58,7 +59,7 @@ export function stepTimingDrive(
 ): TimingDriveState {
   const values = [
     input.crankCycleAngleDeg, input.crankRpm, input.dtSeconds,
-    input.crankDriveTorqueNm, previous.camshaftAngleDeg, previous.camshaftRpm,
+    input.timingDriveTorqueNm, previous.camshaftAngleDeg, previous.camshaftRpm,
     previous.beltTravelM
   ];
   if (!values.every(Number.isFinite) || input.crankRpm < 0 ||
