@@ -41,11 +41,17 @@ describe("positive-drive timing belt", () => {
   });
 
   it("does not magically keep the camshaft synchronized after belt failure", () => {
-    const broken = stepTimingDrive(INITIAL_TIMING_DRIVE_STATE, {
+    const synchronized = stepTimingDrive(INITIAL_TIMING_DRIVE_STATE, {
       crankCycleAngleDeg: 120,
       crankRpm: 800,
       dtSeconds: 0.01,
-      crankDriveTorqueNm: 100
+      crankDriveTorqueNm: 20
+    });
+    const broken = stepTimingDrive(synchronized, {
+      crankCycleAngleDeg: 140,
+      crankRpm: 800,
+      dtSeconds: 0.01,
+      crankDriveTorqueNm: 220
     });
     const coasting = stepTimingDrive(broken, {
       crankCycleAngleDeg: 180,
@@ -57,6 +63,7 @@ describe("positive-drive timing belt", () => {
     expect(coasting.camshaftRpm).toBeLessThan(broken.camshaftRpm);
     expect(coasting.beltTravelM).toBe(broken.beltTravelM);
     expect(coasting.camshaftAngleDeg).not.toBeCloseTo(90, 4);
+    expect(broken.camshaftRpm).toBeLessThan(synchronized.camshaftRpm);
   });
 
   it("rejects invalid integration values", () => {
