@@ -72,7 +72,8 @@
 @media(max-width:900px){.systems-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.engine-3d-inline-four{height:560px}}
 @media(max-width:620px){.systems-grid{gap:5px}.systems-grid>div{padding:7px 5px}.systems-grid strong{font-size:13px}.systems-grid span{font-size:7px}.engine-3d-inline-four{height:470px}.sound-button{font-size:8px;padding:7px 8px}}
 
-@media(max-width:900px){.transport{grid-template-columns:max-content max-content minmax(0,1fr)}.transport-speed{grid-column:1/-1;margin-left:0;justify-content:flex-end}}\n@media(max-width:620px){.transport{grid-template-columns:max-content max-content minmax(0,1fr)}.transport-speed{grid-column:1/-1;width:100%;margin-left:0;justify-content:space-between}.speed-mode-buttons button{padding:7px 8px;font-size:8px}}
+@media(max-width:900px){.transport{grid-template-columns:max-content max-content minmax(0,1fr)}.transport-speed{grid-column:1/-1;margin-left:0;justify-content:flex-end}}
+@media(max-width:620px){.transport{grid-template-columns:max-content max-content minmax(0,1fr)}.transport-speed{grid-column:1/-1;width:100%;margin-left:0;justify-content:space-between}.speed-mode-buttons button{padding:7px 8px;font-size:8px}}
 
 
 /* CAD asset inspection modes */
