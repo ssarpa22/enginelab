@@ -249,7 +249,7 @@ function App() {
     <header className="topbar">
       <a className="brand" href="#" aria-label="EngineLab home"><span className="brand-mark"><span/><span/><span/></span><span>ENGINE<span className="brand-light">LAB</span></span></a>
       <div className="topbar-center"><span className="status-dot"/> SIMULADOR DE MOTOR <span className="version-tag">3D PHYSICS PREVIEW</span></div>
-      <div className="topbar-right"><span className="live-indicator">{damage.seized?"MOTOR GRIPADO":engineMode==="cranking"?"ACCIONANDO BURRO":engineMode==="running"?"MOTOR ENCENDIDO":"MOTOR APAGADO"}</span><span className="topbar-divider"/> L4 · 4T · 16V</div>
+      <div className="topbar-right"><span className="live-indicator">{timingDrive.beltBroken?"CORREA DE DISTRIBUCIÓN ROTA":damage.seized?"MOTOR GRIPADO":engineMode==="cranking"?"ACCIONANDO BURRO":engineMode==="running"?"MOTOR ENCENDIDO":"MOTOR APAGADO"}</span><span className="topbar-divider"/> L4 · 4T · 16V</div>
     </header>
     <section className="intro">
       <div><div className="eyebrow">LABORATORIO DE MECÁNICA / 01</div><h1>Motor <em>L4 DOHC.</em></h1><p>Cuatro cilindros en línea, 16 válvulas, doble árbol de levas y distribución sincronizada. Explorá su mecánica interna en un corte 3D.</p></div>
