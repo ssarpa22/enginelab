@@ -1,5 +1,5 @@
-.engine-audio-control{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
-.engine-audio-selectors{display:flex;gap:6px;min-width:0}
+.engine-audio-control{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-width:0;width:100%;min-height:54px}
+.engine-audio-selectors{display:grid;grid-template-columns:minmax(0,1fr) minmax(76px,.42fr);gap:6px;min-width:0}
 .engine-audio-selectors label{display:flex;flex-direction:column;gap:3px;min-width:0;color:#8c9a94;font:8px 'DM Mono',monospace;letter-spacing:.07em}
 .engine-audio-selectors select{max-width:165px;min-width:95px;padding:7px 22px 7px 8px;border:1px solid #46534f;border-radius:4px;background:#17201f;color:#e4e9e5;font:10px 'DM Sans',sans-serif}
 .engine-audio-actions{display:flex;align-items:center;gap:8px}
@@ -8,4 +8,4 @@
 .engine-audio-volume input{width:68px;accent-color:#e9a34b}
 .engine-audio-status,.engine-audio-error{flex-basis:100%;color:#83c6a9;font:8px 'DM Mono',monospace;letter-spacing:.04em}
 .engine-audio-error{color:#e7a66d}
-@media(max-width:620px){.engine-audio-control{align-items:flex-start}.engine-audio-selectors{width:100%}.engine-audio-selectors label{flex:1}.engine-audio-selectors select{max-width:none;width:100%}}
+@media(max-width:900px){.engine-audio-control{grid-template-columns:minmax(0,1fr) auto}}\n@media(max-width:620px){.engine-audio-control{grid-column:1/-1;grid-template-columns:minmax(0,1fr) auto;align-items:center}.engine-audio-selectors{width:100%}.engine-audio-selectors label{min-width:0}.engine-audio-selectors select{max-width:none;width:100%}}
