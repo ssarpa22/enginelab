@@ -452,8 +452,8 @@ function InlineFourScene(props:Props){
    // reduce effective lift for float/wear, but it cannot command a valve independently
    // of the lobe currently touching its bucket follower.
    const cylinderOffset=INLINE_FOUR_CYCLE_OFFSETS_DEG[i]!;
-   const camIntakeCycle=calculateCamFollowerCycleAngleDeg(coupling.camshaftAngleDeg,INTAKE_CAM_CENTER,cylinderOffset);
-   const camExhaustCycle=calculateCamFollowerCycleAngleDeg(coupling.camshaftAngleDeg,EXHAUST_CAM_CENTER,cylinderOffset);
+   const camIntakeCycle=calculateCamFollowerCycleAngleDeg(props.timingDrive.camshaftAngleDeg,INTAKE_CAM_CENTER,cylinderOffset);
+   const camExhaustCycle=calculateCamFollowerCycleAngleDeg(props.timingDrive.camshaftAngleDeg,EXHAUST_CAM_CENTER,cylinderOffset);
    const camIntakeLift=calculateValveState(camIntakeCycle).intakeLiftMm;
    const camExhaustLift=calculateValveState(camExhaustCycle).exhaustLiftMm;
    const intakeEffectiveness=state.intakeLiftCommandMm>.001?clamp(state.intakeLiftActualMm/state.intakeLiftCommandMm,0,1):0;
@@ -480,9 +480,9 @@ function InlineFourScene(props:Props){
    s.gasParticles[i]!.forEach((bead,index)=>{const intakePath=index<4,rate=intakePath?intakeRate:exhaustRate,open=intakePath?state.intakeLiftActualMm:state.exhaustLiftActualMm;const active=rate>.015&&open>.05;bead.visible=active;if(!active)return;const direction=intakePath?1:-1;const previous=s.gasParticleProgress[i]![index]!;const progress=((previous+direction*rate*motionDeltaSeconds*.8)%1+1)%1;s.gasParticleProgress[i]![index]=progress;const start=intakePath?vec(-width*.50,deck-.04,z):vec(width*.50,deck-.04,z);const end=intakePath?vec(-bore*.28,deck+.02,z):vec(bore*.28,deck+.02,z);bead.position.lerpVectors(start,end,progress);bead.scale.setScalar(.55+rate*.8);});
   });
   s.crank.rotation.z=-crankAngle;s.flywheel.rotation.z=-crankAngle;
-  const pinionX=props.starterActive ? .81 : .96;
+  const pinionX=props.starterActive ? .755 : .96;
   s.starterPinion.position.x=pinionX;
-  s.starterPinion.rotation.z=props.starterActive?props.angle*Math.PI/180*4:0;
+  s.starterPinion.rotation.z=props.starterActive?-s.flywheel.rotation.z*(56/14):0;
   between(s.starterShaft,vec(.96,-.38,-length/2-.12),vec(pinionX,0,-length/2-.12));
   s.cams.forEach((cam,index)=>{const center=index===0?INTAKE_CAM_CENTER:EXHAUST_CAM_CENTER;cam.rotation.z=(-props.timingDrive.camshaftAngleDeg+center/2)*Math.PI/180;});
   // Pump gears remain stationary until a visible mechanical drive is modeled.
