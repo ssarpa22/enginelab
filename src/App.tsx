@@ -197,7 +197,7 @@ function App() {
               dtSeconds:substepSeconds,
               crankDriveTorqueNm:Math.abs(gasTorque+starterTorque)+(!timingDriveRef.current.beltBroken?TIMING_DRIVE_REFLECTED_LOAD_NM:0)
             });
-            if(timingDriveRef.current.beltBroken)activeEngineMode="off";
+            if(timingDriveRef.current.beltBroken&&activeEngineMode==="running")activeEngineMode="off";
             // Advance each cylinder on every crank substep. This prevents the
             // 30 Hz UI angle from wrapping past one or more 720° cycles at high RPM.
             cylinderModelStatesRef.current=cylinderModelStatesRef.current.map((previous,index)=>{
@@ -211,7 +211,7 @@ function App() {
               window.clearTimeout(sparkTimer);
               sparkTimer=window.setTimeout(()=>setSparkFlash(false),Math.min(95/visualRate,9_500));
             }
-            if(activeEngineMode==="cranking"&&starterCanDisengage(nextCrankshaft.rpm))activeEngineMode="running";
+            if(activeEngineMode==="cranking"&&!timingDriveRef.current.beltBroken&&starterCanDisengage(nextCrankshaft.rpm))activeEngineMode="running";
             if(activeEngineMode==="running"&&nextCrankshaft.rpm<8)activeEngineMode="off";
             remaining-=substepSeconds;
           }
@@ -266,7 +266,7 @@ function App() {
         <div className="panel-header engine-view-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>{assetView==="3d"?"Conjunto mecánico · vista 3D":"Ciclo de cuatro tiempos · vista 2D"}</h2></div><div className="scene-view-switch" role="group" aria-label="Vista del motor"><button type="button" className={assetView==="3d"?"active":""} aria-pressed={assetView==="3d"} onClick={()=>setAssetView("3d")}>3D · MECÁNICA</button><button type="button" className={assetView==="2d"?"active":""} aria-pressed={assetView==="2d"} onClick={()=>setAssetView("2d")}>2D · CICLO</button></div></div>
         <div className={`drawing-stage engine-view-stage ${assetView==="2d"?"is-2d-view":"is-3d-view"}`}>{assetView==="3d"?<><div className="scene-section-toolbar" role="group" aria-label="Secciones visibles del motor">{sectionLabels.map(([key,label])=><button key={key} type="button" className={visibleSections[key]?"is-visible":""} aria-pressed={visibleSections[key]} onClick={()=>setVisibleSections(current=>({...current,[key]:!current[key]}))}>{label}</button>)}</div><EngineScene geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} mechanics={mechanicalStates} systems={systems} cylinderStates={sceneTelemetry} sparkFlash={sparkFlash} starterActive={engineMode==="cranking"} visibleSections={visibleSections} timingDrive={timingDrive}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> ADMISIÓN</span><span><i className="legend-exhaust"/> ESCAPE</span><span><i className="legend-spark"/> COMBUSTIÓN</span><span className={`legend-note ${timingDrive.beltBroken?"timing-drive-failed":""}`}>{timingDrive.beltBroken?"FALLA DE DISTRIBUCIÓN · CORREA ROTA":"CORREA DENTADA · CIGÜEÑAL 24T → ÁRBOLES 48T · 2:1"}</span><span className="legend-note">VOLANTE / CORONA DE ARRANQUE: EXTREMO OPUESTO</span></div></>:<><FourStroke2DView geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} playing={running} visualRate={visualRate} onTogglePlaying={()=>setRunning(value=>!value)} onVisualRateChange={setVisualRate} engineMode={engineMode} onStart={()=>setEngineMode(engineMode==="running"?"off":"cranking")} cylinderState={cylinderStates[0]!}/></>}</div>
         {assetView==="3d"&&<div className="transport">
-          <button className={`starter-button ${engineMode==="cranking"?"starter-active":""}`} type="button" disabled={damage.seized||engineMode==="cranking"} onClick={()=>setEngineMode(engineMode==="running"?"off":"cranking")}>{engineMode==="running"?"DETENER MOTOR":engineMode==="cranking"?"ACCIONANDO…":"⏻ START"}</button>
+          <button className={`starter-button ${engineMode==="cranking"?"starter-active":""}`} type="button" disabled={damage.seized} onClick={()=>setEngineMode(engineMode==="running"||engineMode==="cranking"?"off":"cranking")}>{engineMode==="running"?"DETENER MOTOR":engineMode==="cranking"?"DETENER ARRANQUE":timingDrive.beltBroken?"⏻ GIRAR SIN DISTRIBUCIÓN":"⏻ START"}</button>
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
           <div className="transport-readout"><strong>{phase}</strong><span>FASE DEL CICLO</span></div><EngineAudio rpm={effectiveRpm*visualRate} running={running&&!damage.seized} load={clamp(.18+meanBurn*.58+(1-damage.powerFactor)*.12,.12,.95)} cycleAngle={cycleAngle} engineMode={engineMode}/>
           <div className="transport-speed"><span className="speed-mode-label">VELOCIDAD DE SIMULACIÓN</span><div className="speed-mode-buttons">{SIMULATION_SPEEDS.map(speed=><button key={speed.value} type="button" className={visualRate===speed.value?"is-active":""} aria-pressed={visualRate===speed.value} onClick={()=>setVisualRate(speed.value)} title={speed.description}>{speed.label}</button>)}</div></div>
