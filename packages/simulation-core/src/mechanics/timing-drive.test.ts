@@ -28,6 +28,20 @@ describe("positive-drive timing belt", () => {
     expect(state.beltBroken).toBe(false);
   });
 
+  it("survives normal camshaft load without reacting to combustion torque", () => {
+    const state = stepTimingDrive(INITIAL_TIMING_DRIVE_STATE, {
+      crankCycleAngleDeg: 360,
+      crankRpm: 800,
+      dtSeconds: 0.01,
+      timingDriveTorqueNm: 0.9
+    });
+    expect(state.beltTensionN).toBeCloseTo(
+      INLINE_FOUR_TIMING_DRIVE.beltPretensionN + 0.9 / INLINE_FOUR_TIMING_DRIVE.crankPitchRadiusM,
+      8
+    );
+    expect(state.beltBroken).toBe(false);
+  });
+
   it("breaks the belt when calculated tensile load exceeds its rating", () => {
     const state = stepTimingDrive(INITIAL_TIMING_DRIVE_STATE, {
       crankCycleAngleDeg: 90,
