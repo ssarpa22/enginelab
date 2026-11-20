@@ -1,0 +1,37 @@
+body:has(.audio-lab-shell){background:#101516}
+.audio-lab-shell{width:min(1180px,100%);margin:0 auto;padding:0 38px 36px;color:#e7eceb}
+.audio-lab-topbar{height:68px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2b3738;color:#aebbb8;font:9px 'DM Mono',monospace;letter-spacing:.1em}
+.audio-lab-brand{display:flex;align-items:center;gap:9px;color:#e7eceb;text-decoration:none;font:700 14px 'Space Grotesk',sans-serif;letter-spacing:.08em}.audio-lab-brand>span:last-child{color:#e9a34b}
+.audio-lab-mark{display:grid;place-items:center;width:27px;height:27px;border:1px solid #60716d;border-radius:6px;color:#e9a34b;font:600 10px 'DM Mono',monospace}
+.audio-lab-status{display:flex;align-items:center;gap:8px;color:#8ca09a}.audio-lab-status i{width:6px;height:6px;border-radius:50%;background:#61c6b0;box-shadow:0 0 9px #61c6b077}
+.audio-lab-back{color:#d9aa70;text-decoration:none}.audio-lab-back:hover{color:#ffe0ae}
+.audio-lab-intro{padding:43px 0 28px}.audio-lab-eyebrow{color:#e9a34b;font:9px 'DM Mono',monospace;letter-spacing:.15em}
+.audio-lab-intro h1{margin:10px 0;font:600 clamp(32px,5vw,48px)/1.1 'Space Grotesk',sans-serif;letter-spacing:-.05em}.audio-lab-intro h1 em{color:#e9a34b;font-style:normal}
+.audio-lab-intro p{max-width:720px;margin:0;color:#9ba9a5;font-size:13px;line-height:1.65}
+.audio-lab-toolbar{display:grid;grid-template-columns:1fr 1.2fr .8fr;gap:12px;padding:16px;border:1px solid #344142;border-radius:7px;background:#192123}
+.audio-lab-toolbar label,.audio-lab-volume{display:flex;flex-direction:column;gap:8px;color:#91a09c;font:8px 'DM Mono',monospace;letter-spacing:.09em}
+.audio-lab-toolbar input,.audio-lab-toolbar select{width:100%;min-width:0;padding:11px 12px;border:1px solid #3b4949;border-radius:4px;background:#11191b;color:#e2eae6;font:12px 'DM Sans',sans-serif;outline:none}
+.audio-lab-toolbar input:focus,.audio-lab-toolbar select:focus{border-color:#75bda6}
+.audio-lab-selected{display:flex;align-items:center;gap:0;margin:17px 0;border:1px solid #2f3c3d;border-radius:5px;background:#151d1f}
+.audio-lab-selected>div{display:flex;flex-direction:column;gap:5px;flex:1;padding:13px 16px;border-right:1px solid #2f3c3d}.audio-lab-selected>div:last-child{border:0}
+.audio-lab-selected span{color:#83938e;font:8px 'DM Mono',monospace;letter-spacing:.08em}.audio-lab-selected strong{color:#e2eae6;font:600 15px 'Space Grotesk',sans-serif}.audio-lab-selected strong em{color:#e9b06b;font-style:normal}
+.audio-lab-recordings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.audio-lab-card{min-width:0;padding:16px;border:1px solid #354344;border-radius:6px;background:linear-gradient(145deg,#1c2628,#151d1f)}
+.audio-lab-card.is-missing{opacity:.62}
+.audio-lab-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:17px}
+.audio-lab-card-head>div>span{color:#879791;font:8px 'DM Mono',monospace;letter-spacing:.08em}
+.audio-lab-card h2{margin:5px 0 0;color:#e8eee9;font:600 26px 'Space Grotesk',sans-serif;letter-spacing:-.03em}.audio-lab-card h2 small{color:#9ca9a3;font:10px 'DM Mono',monospace}
+.audio-lab-available,.audio-lab-unavailable{padding:5px 6px;border:1px solid #3a6557;border-radius:3px;color:#8bd2b4;font:7px 'DM Mono',monospace;white-space:nowrap}
+.audio-lab-unavailable{border-color:#594a37;color:#d2a56e}
+.audio-lab-player{display:block;width:100%;height:38px;accent-color:#e9a34b}
+.audio-lab-file{margin-top:12px;color:#7e908b;font:8px 'DM Mono',monospace;overflow-wrap:anywhere}
+.audio-lab-no-take{min-height:38px;margin:0;color:#9b9285;font-size:10px;line-height:1.5}
+.audio-lab-global-controls{display:flex;align-items:center;gap:22px;margin-top:15px;padding:15px 16px;border:1px solid #334142;border-radius:5px;background:#171f21}
+.audio-lab-volume{width:min(250px,35%);gap:8px}.audio-lab-volume strong{color:#e9b06b;font:10px 'DM Mono',monospace}.audio-lab-volume input{width:100%;accent-color:#e9a34b}
+.audio-lab-loop{display:flex;align-items:center;gap:8px;color:#aab7b1;font:8px 'DM Mono',monospace;letter-spacing:.06em}.audio-lab-loop input{accent-color:#61c6b0}
+.audio-lab-global-controls button{margin-left:auto;padding:9px 11px;border:1px solid #75583b;border-radius:4px;background:#302419;color:#e9bd87;font:8px 'DM Mono',monospace;letter-spacing:.06em}
+.audio-lab-global-controls button:hover{border-color:#e9a34b}
+.audio-lab-message{margin:20px 0;padding:22px;border:1px solid #354344;border-radius:6px;background:#192224;color:#b9c6c0;font-size:13px;line-height:1.6}.audio-lab-error strong{color:#f0bd7d}.audio-lab-error code{color:#8fd0b4;font-size:11px}
+.audio-lab-footer{margin-top:30px;padding-top:13px;border-top:1px solid #2b3738;color:#74847f;font:8px 'DM Mono',monospace;letter-spacing:.08em}
+@media(max-width:760px){.audio-lab-shell{padding:0 17px 25px}.audio-lab-toolbar{grid-template-columns:1fr 1fr}.audio-lab-search{grid-column:1/-1}.audio-lab-recordings{grid-template-columns:1fr}.audio-lab-card{padding:14px}.audio-lab-selected{flex-wrap:wrap}.audio-lab-selected>div{min-width:50%;border-bottom:1px solid #2f3c3d}.audio-lab-global-controls{align-items:flex-start;flex-wrap:wrap;gap:14px}.audio-lab-volume{width:100%}.audio-lab-global-controls button{margin-left:0}.audio-lab-status{display:none}}
+@media(max-width:430px){.audio-lab-toolbar{grid-template-columns:1fr}.audio-lab-search{grid-column:auto}.audio-lab-selected>div{min-width:100%;border-right:0}.audio-lab-topbar{font-size:8px}.audio-lab-back{font-size:8px}}
