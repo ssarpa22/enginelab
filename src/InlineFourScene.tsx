@@ -180,12 +180,10 @@ function InlineFourScene(props:Props){
   const crank=new THREE.Group();
   const crankWebThickness=.12,crankWebOffset=.29,crankWebInnerFace=crankWebOffset-crankWebThickness/2;
   const crankpinRadius=.16,crankpinLength=crankWebInnerFace*2;
-  const mainJournalCenters:number[]=[];
   for(let mainIndex=0;mainIndex<5;mainIndex++){
    const start=mainIndex===0?-length/2:zAt(mainIndex-1)+crankWebInnerFace;
    const end=mainIndex===4?length/2:zAt(mainIndex)-crankWebInnerFace;
    const journalLength=Math.max(.12,end-start),journalCenter=(start+end)/2;
-   mainJournalCenters.push(journalCenter);
    const journal=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,journalLength,36),steel);
    journal.rotation.x=Math.PI/2;journal.position.z=journalCenter;journal.castShadow=true;crank.add(journal);
    const bearing=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,.26,32),forged);
