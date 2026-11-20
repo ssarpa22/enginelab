@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
-import { calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, DEFAULT_ENGINE_IDLE_RPM, MAX_CRANKSHAFT_RPM, stepCrankshaft } from "./crankshaft-coupling";
+import { calculateCrankshaftMaxAngleStepDeg, calculateCrankshaftSubstepSeconds, calculateInlineFourCrankCoupling, DEFAULT_ENGINE_IDLE_RPM, MAX_CRANKSHAFT_RPM, stepCrankshaft } from "./crankshaft-coupling";
 
 const geometry = createEngineGeometry({
   cylinderCount: 4,
@@ -12,6 +12,14 @@ const geometry = createEngineGeometry({
 });
 
 describe("pressure-coupled inline-four crankshaft", () => {
+  it("uses a wider angular step at high RPM to reduce integration calls", () => {
+    expect(calculateCrankshaftMaxAngleStepDeg(800)).toBe(4);
+    expect(calculateCrankshaftMaxAngleStepDeg(2_500)).toBe(6);
+    expect(calculateCrankshaftMaxAngleStepDeg(4_000)).toBe(8);
+    expect(calculateCrankshaftMaxAngleStepDeg(6_500)).toBe(12);
+    expect(() => calculateCrankshaftMaxAngleStepDeg(-1)).toThrow(RangeError);
+  });
+
   it("keeps the 800 RPM default while allowing a higher experimental ceiling", () => {
     expect(DEFAULT_ENGINE_IDLE_RPM).toBe(800);
     expect(MAX_CRANKSHAFT_RPM).toBe(7_000);
@@ -44,8 +52,8 @@ describe("pressure-coupled inline-four crankshaft", () => {
   });
 
   it("subdivides high-RPM steps to keep crank-angle integration bounded", () => {
-    expect(calculateCrankshaftSubstepSeconds(1 / 240, 1_800, 1_800)).toBeCloseTo(4 / 10_800, 12);
-    expect(calculateCrankshaftSubstepSeconds(1 / 240, 8_000, 8_000)).toBeCloseTo(4 / 48_000, 12);
+    expect(calculateCrankshaftSubstepSeconds(1 / 240, 1_800, 1_800)).toBeCloseTo(6 / 10_800, 12);
+    expect(calculateCrankshaftSubstepSeconds(1 / 240, 8_000, 8_000)).toBeCloseTo(12 / 48_000, 12);
     expect(calculateCrankshaftSubstepSeconds(0.001, 0, 0)).toBe(0.001);
     expect(() => calculateCrankshaftSubstepSeconds(-0.01, 1_000, 1_000)).toThrow(RangeError);
   });

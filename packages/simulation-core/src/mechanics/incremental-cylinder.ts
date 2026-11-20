@@ -13,7 +13,14 @@ type CylinderGeometry = Pick<EngineGeometry, "boreM" | "crankRadiusM" | "connect
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const wrap = (angle: number, period: number) => ((angle % period) + period) % period;
-const MAX_ANGLE_STEP_DEG = 0.5;
+/** Adaptive angular resolution trades some thermodynamic detail for bounded CPU cost at high RPM. */
+export function calculateCylinderIntegrationAngleStepDeg(rpm: number): number {
+  if (!Number.isFinite(rpm) || rpm < 0) throw new RangeError("RPM must be finite and non-negative.");
+  if (rpm < 1_800) return 0.5;
+  if (rpm < 3_500) return 0.75;
+  if (rpm < 5_000) return 1;
+  return 1.5;
+}
 
 /**
  * Starts the persistent 0-D cylinder integrator at intake-valve closing.
@@ -95,7 +102,7 @@ export function advanceIncrementalCylinderState(
   let heatRate = 0;
   let burned = previous.burnedFraction;
   let torque = previous.indicatedTorqueNm;
-  const steps = Math.ceil(delta / MAX_ANGLE_STEP_DEG);
+  const steps = Math.ceil(delta / calculateCylinderIntegrationAngleStepDeg(rpm));
   const angleStep = delta / steps;
 
   for (let i = 0; i < steps; i += 1) {
