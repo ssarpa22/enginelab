@@ -14,7 +14,7 @@ const geometry = createEngineGeometry({
 describe("pressure-coupled inline-four crankshaft", () => {
   it("keeps the 800 RPM default while allowing a higher experimental ceiling", () => {
     expect(DEFAULT_ENGINE_IDLE_RPM).toBe(800);
-    expect(MAX_CRANKSHAFT_RPM).toBe(DEFAULT_ENGINE_IDLE_RPM);
+    expect(MAX_CRANKSHAFT_RPM).toBe(7_000);
   });
   it("keeps piston positions on the exact slider-crank geometry", () => {
     const state = calculateInlineFourCrankCoupling(geometry, 0, 1_800, [101_325, 101_325, 101_325, 101_325]);
@@ -91,6 +91,15 @@ describe("pressure-coupled inline-four crankshaft", () => {
     }
     expect(state.rpm).toBeGreaterThan(80);
     expect(state.rpm).toBeLessThanOrEqual(MAX_CRANKSHAFT_RPM);
+  });
+
+  it("allows high-RPM operation for failure-limit experiments", () => {
+    const state = stepCrankshaft({ cycleAngleDeg: 0, rpm: 6_800 }, 80, {
+      targetRpm: 6_800, dtSeconds: .001, loadTorqueNm: 0, frictionTorqueNm: 0,
+      inertiaKgM2: .42, governorGainNmPerRpm: .8, maximumGasTorqueNm: 220
+    });
+    expect(state.rpm).toBeGreaterThan(6_700);
+    expect(state.rpm).toBeLessThanOrEqual(7_000);
   });
 
   it("hard-limits the crankshaft even when a caller requests an unsafe target", () => {
