@@ -197,9 +197,9 @@ function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props
 
     const { context, pulseBuffer, pulseFilters } = active;
     const profile = engineAudioProfile(rpm, load);
-    const intervalSeconds = 30 / Math.max(1, rpm);
-    const firstCrossingDeg = 180 - (previous % 180);
-    const firstDelay = Math.max(0, firstCrossingDeg / advanceDeg * elapsed);
+    // All detected crossings occurred during the preceding UI interval. Queue
+    // the recovered burst from "now", preserving the measured shaft cadence.
+    const intervalSeconds = (180 / advanceDeg) * elapsed;
     for (let i = 0; i < Math.min(crossings, 12); i++) {
       const source = context.createBufferSource();
       source.buffer = pulseBuffer;
@@ -207,7 +207,7 @@ function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props
       eventGain.gain.value = profile.exhaustGain * (0.72 + profile.exhaustBrightness * 0.4);
       source.connect(eventGain);
       pulseFilters.forEach(filter => eventGain.connect(filter));
-      const at = context.currentTime + firstDelay + i * intervalSeconds;
+      const at = context.currentTime + i * intervalSeconds;
       source.start(at);
       source.onended = () => { source.disconnect(); eventGain.disconnect(); };
     }
