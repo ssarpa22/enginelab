@@ -1,27 +1,22 @@
-# Starter, idle and combustion audio
+# Engine audio: NFS-inspired layered playback
 
-## Engine states
+## Design intent
 
-The engine now starts in the stopped state. The simulation clock can remain active while the crankshaft is stationary. Pressing START engages a modeled starter torque curve against the crankshaft; the starter pinion is shown moving into the flywheel ring gear and rotates at a reduction ratio while engaged.
+The audio path is user-activated for browser audio permissions. The target is an energetic, recognizable naturally aspirated inline-four character inspired by the layered and RPM-responsive presentation of early racing games such as Need for Speed I and II. This is an original procedural implementation; it does not contain extracted game recordings or proprietary sound assets.
 
-The starter torque falls with motor speed. At the cut-out threshold (180 RPM in this educational model), the starter disengages and the engine transitions to running. The combustion torque then becomes the source of crankshaft drive. STOP cuts combustion torque and allows the rotating assembly to coast down under load and friction.
+## Signal architecture
 
-The starter is an approximate permanent-magnet motor model, not a detailed electromagnetic or solenoid circuit model. Compression pulses, battery voltage sag, pinion tooth impact and starter thermal limits are not yet solved.
+- **Exhaust:** each 180-degree inline-four firing interval triggers a short, deterministic pressure sample with a sharp crack, a low-frequency pressure body and a decaying gas tail. A filter bank shifts its resonances and spectral balance with RPM and load.
+- **Induction:** a separate broadband airflow layer changes its band-pass centre and gain with RPM and engine load.
+- **Mechanical texture:** a separate high-passed noise layer represents subtle valvetrain and rotating-mechanical content. It is intentionally quieter than the exhaust.
+- **Starter:** remains a separate sound used only while cranking.
 
-## Valve and cam geometry
+There is no continuous pitched oscillator bed for the running engine. The layers use smoothed AudioParam targets to avoid abrupt spectral jumps when the RPM command changes.
 
-The valve assembly uses a poppet profile with a distinct stem, keeper, retainer and enlarged mushroom head, plus a visible guide and seat. The spring compression and valve travel remain driven by the cylinder's cam-lift state. Cam lobes use an asymmetric extruded nose profile instead of spherical placeholders.
+## RPM and torque character
 
-## Sound
+The audio model includes a broad, naturally aspirated 2.0 L torque envelope with a mid-range peak and high-RPM falloff. It shapes the sound's body and brightness; it does not replace the existing cylinder-pressure, crankshaft or governor physics. The UI RPM slider remains a governed target RPM, not a throttle pedal. A true throttle/load control and a calibrated torque curve for the physical simulation remain separate future work.
 
-The audio path is user-activated to respect browser audio permissions. Engine exhaust pulses are one-shot synthesized transients triggered by the live 180-degree firing intervals, with a short pressure front, low-frequency resonances and a decaying noise tail. Separate low-frequency engine-body tones and intake/mechanical noise scale with RPM and load. During cranking, a separate starter-motor whine is used.
+## Timing and limitations
 
-This is procedural audio, not a recording of a specific engine. The current combustion pulse envelope and resonances are approximations; matching a real exhaust requires measured recordings or a calibrated acoustic model.
-
-## UI responsiveness
-
-The RPM slider keeps its immediate display value while the physics target uses React's deferred value. The 3D scene receives memoized telemetry and is memoized itself, so each pointer movement does not force the scene to rebuild or re-run its geometry update effect. The simulation loop only restarts when the deferred target actually changes.
-
-## Validation limits
-
-Automated tests cover the starter torque curve, starter cut-out and external torque driving a stationary crankshaft. Manual browser checks are still needed for the perceived sound, pinion engagement visibility, valve clearances and frame pacing on the user's hardware.
+The four-stroke cycle angle is used to detect every 180-degree firing boundary. Event timing is interpolated across the UI frame interval, and event nodes are disconnected after playback. Audio is synthesized from procedural samples, not licensed recordings of NFS cars or a measured real engine. Browser/device listening tests are required to tune loudness, timbre and perceived realism; automated tests only cover the deterministic audio profile and firing cadence.
