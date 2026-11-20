@@ -18,12 +18,27 @@ describe("positive-drive timing belt", () => {
       crankCycleAngleDeg: 540,
       crankRpm: 800,
       dtSeconds: 0.01,
-      crankDriveTorqueNm: 12
+      timingDriveTorqueNm: 12
     });
     expect(state.camshaftAngleDeg).toBeCloseTo(270, 10);
     expect(state.camshaftRpm).toBe(400);
     expect(state.beltSpeedMPerS).toBeGreaterThan(0);
     expect(state.beltTravelM).toBeGreaterThan(0);
+    expect(state.beltTensionN).toBeGreaterThan(INLINE_FOUR_TIMING_DRIVE.beltPretensionN);
+    expect(state.beltBroken).toBe(false);
+  });
+
+  it("survives normal camshaft load without reacting to combustion torque", () => {
+    const state = stepTimingDrive(INITIAL_TIMING_DRIVE_STATE, {
+      crankCycleAngleDeg: 360,
+      crankRpm: 800,
+      dtSeconds: 0.01,
+      timingDriveTorqueNm: 0.9
+    });
+    expect(state.beltTensionN).toBeCloseTo(
+      INLINE_FOUR_TIMING_DRIVE.beltPretensionN + 0.9 / INLINE_FOUR_TIMING_DRIVE.crankPitchRadiusM,
+      8
+    );
     expect(state.beltBroken).toBe(false);
   });
 
@@ -32,7 +47,7 @@ describe("positive-drive timing belt", () => {
       crankCycleAngleDeg: 90,
       crankRpm: 800,
       dtSeconds: 0.01,
-      crankDriveTorqueNm: INLINE_FOUR_TIMING_DRIVE.maximumBeltTensionN *
+      timingDriveTorqueNm: INLINE_FOUR_TIMING_DRIVE.maximumBeltTensionN *
         INLINE_FOUR_TIMING_DRIVE.crankPitchRadiusM * 1.1
     });
     expect(state.beltBroken).toBe(true);
@@ -45,19 +60,19 @@ describe("positive-drive timing belt", () => {
       crankCycleAngleDeg: 120,
       crankRpm: 800,
       dtSeconds: 0.01,
-      crankDriveTorqueNm: 20
+      timingDriveTorqueNm: 20
     });
     const broken = stepTimingDrive(synchronized, {
       crankCycleAngleDeg: 140,
       crankRpm: 800,
       dtSeconds: 0.01,
-      crankDriveTorqueNm: 220
+      timingDriveTorqueNm: 220
     });
     const coasting = stepTimingDrive(broken, {
       crankCycleAngleDeg: 180,
       crankRpm: 800,
       dtSeconds: 0.01,
-      crankDriveTorqueNm: 10
+      timingDriveTorqueNm: 10
     });
     expect(coasting.beltBroken).toBe(true);
     expect(coasting.camshaftRpm).toBeLessThan(broken.camshaftRpm);
@@ -68,7 +83,7 @@ describe("positive-drive timing belt", () => {
 
   it("rejects invalid integration values", () => {
     expect(() => stepTimingDrive(INITIAL_TIMING_DRIVE_STATE, {
-      crankCycleAngleDeg: 0, crankRpm: -1, dtSeconds: 0.01, crankDriveTorqueNm: 1
+      crankCycleAngleDeg: 0, crankRpm: -1, dtSeconds: 0.01, timingDriveTorqueNm: 1
     })).toThrow(RangeError);
   });
 });
