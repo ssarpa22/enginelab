@@ -29,6 +29,8 @@ const wrap = (value: number, period: number) => ((value % period) + period) % pe
 
 export const TIMING_DRIVE_RATIO =
   INLINE_FOUR_TIMING_DRIVE.camPulleyTeeth / INLINE_FOUR_TIMING_DRIVE.crankPulleyTeeth;
+/** Lumped valve-spring/friction load reflected through the 2:1 belt ratio. */
+export const TIMING_DRIVE_REFLECTED_LOAD_NM = 0.9;
 
 export const INITIAL_TIMING_DRIVE_STATE: TimingDriveState = {
   camshaftAngleDeg: 0,
