@@ -49,7 +49,8 @@ function createCamLobeShape(kind:"intake"|"exhaust",centerCycle:number,cylinderO
   const normalizedLift=clamp(liftMm/Math.max(maxLift,1e-6),0,1);
   // Keep the heel exactly circular, use a broad rounded nose and smooth flanks.
   // The exponent widens the nose arc without changing the specified maximum lift.
-  const curvedLift=normalizedLift===0?0:Math.pow(normalizedLift,.58);
+  const broadLift=Math.pow(normalizedLift,.85);
+  const curvedLift=broadLift*broadLift*(3-2*broadLift);
   const radius=.135+curvedLift*maxLift/1000*scale;
   const angle=angleDeg*Math.PI/180;
   const x=Math.cos(angle)*radius,y=Math.sin(angle)*radius;
@@ -228,6 +229,7 @@ function InlineFourScene(props:Props){
   const belt=new THREE.Mesh(new THREE.TubeGeometry(beltCurve,256,.045,10,true),timingBeltMaterial);belt.castShadow=true;timing.add(belt);addSceneObject(timing);
   const parts:Part[]=[],gasParticles:THREE.Mesh[][]=[],gasParticleProgress:number[][]=[],gasParticleMaterials=[new THREE.MeshStandardMaterial({color:0x7de4c7,emissive:0x1a7563,emissiveIntensity:.7,roughness:.3}),new THREE.MeshStandardMaterial({color:0xf2a36a,emissive:0x8a3d19,emissiveIntensity:.65,roughness:.35})];
   for(let i=0;i<4;i++){
+   activeSection="bottomEnd";
    const z=zAt(i),piston=new THREE.Group();
    const crown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.22,64),steel);crown.position.y=.20;crown.castShadow=true;piston.add(crown);
    const bowl=new THREE.Mesh(new THREE.CylinderGeometry(bore*.25,bore*.25,.025,32),mat(0x879294,.38,.8));bowl.position.y=.315;piston.add(bowl);
@@ -427,7 +429,7 @@ function InlineFourScene(props:Props){
   // Oil-pump gear meshes are intentionally not animated without a visible drive train.
   s.oilMaterial.color.setHex(props.systems.oilTemperatureC>125?0x50300d:0x302512);
   s.metalMaterials[0]!.color.setHex(props.systems.headTemperatureC>180?0x9d5540:0x879599);
- },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems,props.starterActive]);
+ },[props.geometry,props.angle,props.rpm,props.cylinderStates,props.mechanics,props.systems,props.starterActive,props.visibleSections]);
 
  return <div className="engine-3d-host engine-3d-inline-four" ref={host}>
   <div className="engine-3d-hint">ROTÁ · ZOOM · INSPECCIONÁ EL CONJUNTO</div>
