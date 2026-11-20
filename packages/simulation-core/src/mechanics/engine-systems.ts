@@ -152,7 +152,9 @@ export function advanceEngineSystems(
   const oilPickup=clamp(input.oilPickupAvailability??1,0,1)*clamp(oilLevelL/.65,0,1);
   const coolantPump=clamp(input.coolantPumpEfficiency??1,0,1)*clamp(coolantLevelL/1.2,0,1);
   const oilViscosityFactor=clamp(1.25-(previous.oilTemperatureC-20)*.008,.42,1.35);
-  const pumpPressure= input.rpm===0 ? 0 : Math.min(5.2, .00095*input.rpm*oilViscosityFactor)*oilPickup;
+  // Regulated gallery pressure has a positive idle offset. The old rpm-only curve
+  // produced less than 1 bar at 800 RPM and falsely declared a healthy engine oil-starved.
+  const pumpPressure= input.rpm===0 ? 0 : Math.min(5.2, 1.2 + .0007*input.rpm*oilViscosityFactor)*oilPickup;
   const relief=5.2;
   const oilPressureBar=Math.min(relief,pumpPressure);
   const oilFlowLPerMin=input.rpm===0?0:Math.min(32,input.rpm*.0038*oilViscosityFactor)*oilPickup;

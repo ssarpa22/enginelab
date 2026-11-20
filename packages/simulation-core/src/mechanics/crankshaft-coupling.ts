@@ -28,9 +28,9 @@ export interface CrankshaftDynamicState {
 }
 
 export const MAX_CRANKSHAFT_ANGLE_STEP_DEG = 4;
-/** Fixed engine idle setpoint; the preview does not expose an independent RPM control. */
+/** Default idle setpoint; the UI can command higher governor targets for experiments. */
 export const DEFAULT_ENGINE_IDLE_RPM = 800;
-export const MAX_CRANKSHAFT_RPM = DEFAULT_ENGINE_IDLE_RPM;
+export const MAX_CRANKSHAFT_RPM = 7_000;
 
 /**
  * Keeps crankshaft integration from jumping over large portions of a cycle at
