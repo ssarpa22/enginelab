@@ -27,7 +27,14 @@ export interface CrankshaftDynamicState {
   rpm: number;
 }
 
-export const MAX_CRANKSHAFT_ANGLE_STEP_DEG = 4;
+/** Larger angular steps at high speed bound integration overhead. */
+export function calculateCrankshaftMaxAngleStepDeg(rpm: number): number {
+  if (!Number.isFinite(rpm) || rpm < 0) throw new RangeError("RPM must be finite and non-negative.");
+  if (rpm < 1_800) return 4;
+  if (rpm < 3_500) return 6;
+  if (rpm < 5_000) return 8;
+  return 12;
+}
 /** Default idle setpoint; the UI can command higher governor targets for experiments. */
 export const DEFAULT_ENGINE_IDLE_RPM = 800;
 export const MAX_CRANKSHAFT_RPM = 7_000;
@@ -49,7 +56,7 @@ export function calculateCrankshaftSubstepSeconds(
   if (remainingSeconds === 0) return 0;
   const planningRpm = Math.max(rpm, targetRpm);
   if (planningRpm === 0) return remainingSeconds;
-  const maxStepSeconds = MAX_CRANKSHAFT_ANGLE_STEP_DEG / (6 * planningRpm);
+  const maxStepSeconds = calculateCrankshaftMaxAngleStepDeg(planningRpm) / (6 * planningRpm);
   return Math.min(remainingSeconds, maxStepSeconds);
 }
 

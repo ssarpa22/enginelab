@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
-import { advanceIncrementalCylinderState, createIncrementalCylinderState } from "./incremental-cylinder";
+import { advanceIncrementalCylinderState, calculateCylinderIntegrationAngleStepDeg, createIncrementalCylinderState } from "./incremental-cylinder";
 
 const geometry = createEngineGeometry({
   cylinderCount: 1, boreM: 0.086, strokeM: 0.086,
@@ -9,6 +9,14 @@ const geometry = createEngineGeometry({
 });
 
 describe("incremental cylinder thermodynamics", () => {
+  it("uses a coarser bounded integration interval as RPM rises", () => {
+    expect(calculateCylinderIntegrationAngleStepDeg(800)).toBe(0.5);
+    expect(calculateCylinderIntegrationAngleStepDeg(3_000)).toBe(0.75);
+    expect(calculateCylinderIntegrationAngleStepDeg(4_000)).toBe(1);
+    expect(calculateCylinderIntegrationAngleStepDeg(6_500)).toBe(1.5);
+    expect(() => calculateCylinderIntegrationAngleStepDeg(-1)).toThrow(RangeError);
+  });
+
   it("advances fractional crank-angle steps without replaying prior history", () => {
     let state = createIncrementalCylinderState(geometry);
     const start = state.integratedAngleDeg;

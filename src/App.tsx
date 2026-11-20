@@ -53,10 +53,6 @@ function phaseAt(angle: number): Phase {
 function App() {
   const [setup,setSetup]=useState<Setup>(INITIAL);
   const [targetRpm,setTargetRpm]=useState(IDLE_RPM);
-  // Keep the live governor command outside the animation-effect lifecycle. Dragging
-  // the RPM slider must not tear down/recreate requestAnimationFrame on every input.
-  const targetRpmRef=useRef(IDLE_RPM);
-  targetRpmRef.current=targetRpm;
   const [cycleAngle,setCycleAngle]=useState(0);
   const cylinderModelStatesRef=useRef<(IncrementalCylinderState|null)[]>([null,null,null,null]);
   const cylinderModelGeometryRef=useRef<EngineGeometry|null>(null);
@@ -165,7 +161,7 @@ function App() {
           let remaining=dt;
           while(remaining>1e-10){
             const current=crankshaftRef.current;
-            const substepSeconds=calculateCrankshaftSubstepSeconds(remaining,current.rpm,activeEngineMode==="running"?targetRpmRef.current:0);
+            const substepSeconds=calculateCrankshaftSubstepSeconds(remaining,current.rpm,activeEngineMode==="running"?targetRpm:0);
             const from=((current.cycleAngleDeg%720)+720)%720;
             const distance=(sparkAngle-from+720)%720;
             const currentCylinderStates=cylinderModelStatesRef.current.map((state,index)=>{
@@ -182,7 +178,7 @@ function App() {
             const gasTorque=activeEngineMode==="running"?coupling.indicatedGasTorqueNm*damageRef.current.powerFactor:0;
             const starterTorque=activeEngineMode==="cranking"?calculateStarterTorque(current.rpm,true):0;
             const nextCrankshaft=stepCrankshaft(current,gasTorque,{
-              targetRpm:activeEngineMode==="running"?targetRpmRef.current:0,
+              targetRpm:activeEngineMode==="running"?targetRpm:0,
               dtSeconds:substepSeconds,
               loadTorqueNm:(activeEngineMode==="cranking"?8:22)+(timingDriveRef.current.beltBroken?0:TIMING_DRIVE_REFLECTED_LOAD_NM),
               frictionTorqueNm:3+damageRef.current.frictionTorqueNm,
@@ -243,7 +239,7 @@ function App() {
     };
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
-  },[running,visualRate,engineMode,geometry]);
+  },[running,targetRpm,visualRate,engineMode,geometry]);
   const reset=()=>{setTargetRpm(IDLE_RPM);cylinderModelStatesRef.current=[null,null,null,null];cylinderModelGeometryRef.current=null;setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};timingDriveRef.current={...INITIAL_TIMING_DRIVE_STATE};setTimingDrive({...INITIAL_TIMING_DRIVE_STATE});setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
