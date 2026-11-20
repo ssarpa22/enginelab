@@ -14,6 +14,7 @@ import EngineAudio from "./EngineAudio";
 import FourStroke2DView from "./FourStroke2DView";
 import { calculateStarterTorque, starterCanDisengage } from "../packages/simulation-core/src/mechanics/starter-system";
 import { consumeFixedSteps, createFixedStepAccumulator, FIXED_PHYSICS_STEP_SECONDS } from "../packages/simulation-core/src/mechanics/fixed-step-clock";
+import { INITIAL_TIMING_DRIVE_STATE, stepTimingDrive, type TimingDriveState } from "../packages/simulation-core/src/mechanics/timing-drive";
 
 type Setup = { boreMm: number; strokeMm: number; rodMm: number; compressionRatio: number };
 const IDLE_RPM = DEFAULT_ENGINE_IDLE_RPM;
@@ -57,6 +58,8 @@ function App() {
   const cylinderModelGeometryRef=useRef<EngineGeometry|null>(null);
   const [shaftRpm,setShaftRpm]=useState(0);
   const crankshaftRef=useRef<CrankshaftDynamicState>({cycleAngleDeg:0,rpm:0});
+  const [timingDrive,setTimingDrive]=useState<TimingDriveState>({...INITIAL_TIMING_DRIVE_STATE});
+  const timingDriveRef=useRef<TimingDriveState>({...INITIAL_TIMING_DRIVE_STATE});
 
   const [running,setRunning]=useState(true);
   const [engineMode,setEngineMode]=useState<"off"|"cranking"|"running">("off");
@@ -185,6 +188,16 @@ function App() {
               externalTorqueNm:starterTorque
             });
             crankshaftRef.current=nextCrankshaft;
+            // The timing belt is a positive mechanical constraint. Its camshaft
+            // speed comes from pulley tooth ratio; overload breaks the belt and
+            // removes combustion so the crank coasts while the cam train winds down.
+            timingDriveRef.current=stepTimingDrive(timingDriveRef.current,{
+              crankCycleAngleDeg:nextCrankshaft.cycleAngleDeg,
+              crankRpm:nextCrankshaft.rpm,
+              dtSeconds:substepSeconds,
+              crankDriveTorqueNm:Math.abs(gasTorque+starterTorque)
+            });
+            if(timingDriveRef.current.beltBroken)activeEngineMode="off";
             // Advance each cylinder on every crank substep. This prevents the
             // 30 Hz UI angle from wrapping past one or more 720° cycles at high RPM.
             cylinderModelStatesRef.current=cylinderModelStatesRef.current.map((previous,index)=>{
@@ -214,6 +227,7 @@ function App() {
           setRunning(false);
         }else if(time-lastUiPaint>=16){
           setCycleAngle(crankshaftRef.current.cycleAngleDeg);
+          setTimingDrive({...timingDriveRef.current});
           setShaftRpm(crankshaftRef.current.rpm);
           lastUiPaint=time;
         }
@@ -224,7 +238,7 @@ function App() {
     frame=requestAnimationFrame(tick);
     return ()=>{cancelAnimationFrame(frame);window.clearTimeout(sparkTimer);};
   },[running,targetRpm,visualRate,engineMode,geometry]);
-  const reset=()=>{cylinderModelStatesRef.current=[null,null,null,null];cylinderModelGeometryRef.current=null;setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
+  const reset=()=>{cylinderModelStatesRef.current=[null,null,null,null];cylinderModelGeometryRef.current=null;setSetup(INITIAL);crankshaftRef.current={cycleAngleDeg:0,rpm:0};timingDriveRef.current={...INITIAL_TIMING_DRIVE_STATE};setTimingDrive({...INITIAL_TIMING_DRIVE_STATE});setCycleAngle(0);setShaftRpm(0);setEngineMode("off");setVisualRate(1);setSparkFlash(false);systemsRef.current={...INITIAL_ENGINE_SYSTEMS};setSystems({...INITIAL_ENGINE_SYSTEMS});damageRef.current={...INITIAL_ENGINE_DAMAGE};setDamage({...INITIAL_ENGINE_DAMAGE});setRunning(true);};
   const phaseCopy:Record<Phase,string>={
     Intake:"La admisión permanece abierta durante la carrera descendente. El cierre se retrasa hasta después del PMI.",
     Compression:"Las válvulas están cerradas y el pistón comprime la carga. La chispa salta antes del PMS.",
@@ -250,7 +264,7 @@ function App() {
     <div className="workspace-grid">
       <section className="panel mechanism-panel">
         <div className="panel-header engine-view-header"><div><div className="panel-kicker">01 / MOTOR EN MOVIMIENTO</div><h2>{assetView==="3d"?"Conjunto mecánico · vista 3D":"Ciclo de cuatro tiempos · vista 2D"}</h2></div><div className="scene-view-switch" role="group" aria-label="Vista del motor"><button type="button" className={assetView==="3d"?"active":""} aria-pressed={assetView==="3d"} onClick={()=>setAssetView("3d")}>3D · MECÁNICA</button><button type="button" className={assetView==="2d"?"active":""} aria-pressed={assetView==="2d"} onClick={()=>setAssetView("2d")}>2D · CICLO</button></div></div>
-        <div className={`drawing-stage engine-view-stage ${assetView==="2d"?"is-2d-view":"is-3d-view"}`}>{assetView==="3d"?<><div className="scene-section-toolbar" role="group" aria-label="Secciones visibles del motor">{sectionLabels.map(([key,label])=><button key={key} type="button" className={visibleSections[key]?"is-visible":""} aria-pressed={visibleSections[key]} onClick={()=>setVisibleSections(current=>({...current,[key]:!current[key]}))}>{label}</button>)}</div><EngineScene geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} mechanics={mechanicalStates} systems={systems} cylinderStates={sceneTelemetry} sparkFlash={sparkFlash} starterActive={engineMode==="cranking"} visibleSections={visibleSections}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> ADMISIÓN</span><span><i className="legend-exhaust"/> ESCAPE</span><span><i className="legend-spark"/> COMBUSTIÓN</span><span className="legend-note">DISTRIBUCIÓN: CIGÜEÑAL 24T → ÁRBOLES 48T · 2:1</span><span className="legend-note">VOLANTE / CORONA DE ARRANQUE: EXTREMO OPUESTO</span></div></>:<><FourStroke2DView geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} playing={running} visualRate={visualRate} onTogglePlaying={()=>setRunning(value=>!value)} onVisualRateChange={setVisualRate} engineMode={engineMode} onStart={()=>setEngineMode(engineMode==="running"?"off":"cranking")} cylinderState={cylinderStates[0]!}/></>}</div>
+        <div className={`drawing-stage engine-view-stage ${assetView==="2d"?"is-2d-view":"is-3d-view"}`}>{assetView==="3d"?<><div className="scene-section-toolbar" role="group" aria-label="Secciones visibles del motor">{sectionLabels.map(([key,label])=><button key={key} type="button" className={visibleSections[key]?"is-visible":""} aria-pressed={visibleSections[key]} onClick={()=>setVisibleSections(current=>({...current,[key]:!current[key]}))}>{label}</button>)}</div><EngineScene geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} mechanics={mechanicalStates} systems={systems} cylinderStates={sceneTelemetry} sparkFlash={sparkFlash} starterActive={engineMode==="cranking"} visibleSections={visibleSections} timingDrive={timingDrive}/><div className="drawing-legend"><span><i className="legend-piston"/> PISTÓN / BIELA / CIGÜEÑAL</span><span><i className="legend-intake"/> ADMISIÓN</span><span><i className="legend-exhaust"/> ESCAPE</span><span><i className="legend-spark"/> COMBUSTIÓN</span><span className={`legend-note ${timingDrive.beltBroken?"timing-drive-failed":""}`}>{timingDrive.beltBroken?"FALLA DE DISTRIBUCIÓN · CORREA ROTA":"CORREA DENTADA · CIGÜEÑAL 24T → ÁRBOLES 48T · 2:1"}</span><span className="legend-note">VOLANTE / CORONA DE ARRANQUE: EXTREMO OPUESTO</span></div></>:<><FourStroke2DView geometry={geometry} angle={cycleAngle} rpm={effectiveRpm} playing={running} visualRate={visualRate} onTogglePlaying={()=>setRunning(value=>!value)} onVisualRateChange={setVisualRate} engineMode={engineMode} onStart={()=>setEngineMode(engineMode==="running"?"off":"cranking")} cylinderState={cylinderStates[0]!}/></>}</div>
         {assetView==="3d"&&<div className="transport">
           <button className={`starter-button ${engineMode==="cranking"?"starter-active":""}`} type="button" disabled={damage.seized||engineMode==="cranking"} onClick={()=>setEngineMode(engineMode==="running"?"off":"cranking")}>{engineMode==="running"?"DETENER MOTOR":engineMode==="cranking"?"ACCIONANDO…":"⏻ START"}</button>
           <button className="transport-button" onClick={()=>setRunning(v=>!v)} type="button" aria-label={running?"Pausar simulación":"Reanudar simulación"}>{running?"Ⅱ":"▶"}</button>
