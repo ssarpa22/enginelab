@@ -94,6 +94,9 @@ function InlineFourScene(props:Props){
   const oilMaterial=new THREE.MeshStandardMaterial({color:0x302512,roughness:.18,metalness:.12,transparent:true,opacity:.88});
   const coolantMaterial=new THREE.MeshStandardMaterial({color:0x247f8b,roughness:.2,metalness:.15,transparent:true,opacity:.24});
   const intakeMaterial=mat(0x368f7d,.32,.42),exhaustMaterial=mat(0x98532c,.42,.5);
+  const linerMaterial=new THREE.MeshStandardMaterial({color:0x9ba8aa,metalness:.92,roughness:.2,side:THREE.DoubleSide});
+  const pistonBowlMaterial=mat(0x879294,.38,.8);
+  const pistonBossMaterial=mat(0x647277,.3,.88);
   const metalMaterials=[aluminium,steel,forged];
   activeSection="block";
   // The crankcase and block are separate cast sections. The front service face is removed for inspection.
@@ -135,7 +138,7 @@ function InlineFourScene(props:Props){
   headBolts.castShadow=true;addSceneObject(headBolts);
   // Machined liners and water jackets, sized from the actual bore/stroke.
   for(let i=0;i<4;i++){
-   const z=zAt(i),liner=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5,bore*.5,stroke+.52,56,1,true),new THREE.MeshStandardMaterial({color:0x9ba8aa,metalness:.92,roughness:.2,side:THREE.DoubleSide}));liner.position.set(0,deck-stroke/2-.18,z);liner.castShadow=true;addSceneObject(liner);
+   const z=zAt(i),liner=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5,bore*.5,stroke+.52,56,1,true),linerMaterial);liner.position.set(0,deck-stroke/2-.18,z);liner.castShadow=true;addSceneObject(liner);
    const jacket=new THREE.Mesh(new THREE.CylinderGeometry(bore*.67,bore*.67,stroke+.24,40,1,true),coolantMaterial);jacket.position.set(0,deck-stroke/2-.08,z);addSceneObject(jacket);
    const fireRing=new THREE.Mesh(new THREE.TorusGeometry(bore*.51,.035,10,56),steel);fireRing.rotation.x=Math.PI/2;fireRing.position.set(0,deck+.015,z);addSceneObject(fireRing);
    for(const x of [-1,1]){const bolt=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.18,12),steel);bolt.position.set(x*width*.39,deck+.07,z);addSceneObject(bolt);}
@@ -232,13 +235,12 @@ function InlineFourScene(props:Props){
    activeSection="bottomEnd";
    const z=zAt(i),piston=new THREE.Group();
    const crown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.22,64),steel);crown.position.y=.20;crown.castShadow=true;piston.add(crown);
-   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(bore*.25,bore*.25,.025,32),mat(0x879294,.38,.8));bowl.position.y=.315;piston.add(bowl);
+   const bowl=new THREE.Mesh(new THREE.CylinderGeometry(bore*.25,bore*.25,.025,32),pistonBowlMaterial);bowl.position.y=.315;piston.add(bowl);
    for(const y of [.08,-.015,-.11]){const ring=new THREE.Mesh(new THREE.TorusGeometry(bore*.5-.00035*props.geometry.boreM*scale,.014,12,64),y===-.11?bronze:dark);ring.rotation.x=Math.PI/2;ring.position.y=y;piston.add(ring);}
    const pin=new THREE.Mesh(new THREE.CylinderGeometry(.105,.105,bore*.78,32),bronze);pin.rotation.z=Math.PI/2;pin.position.y=-.015;piston.add(pin);
-   const bossMaterial=mat(0x647277,.3,.88);
    for(const side of [-1,1]){
     const boss=new THREE.Mesh(new THREE.CylinderGeometry(.145,.145,.20,32),aluminium);boss.rotation.z=Math.PI/2;boss.position.set(side*bore*.22,-.015,0);piston.add(boss);
-    const gusset=new THREE.Mesh(new RoundedBoxGeometry(.13,.19,.16,4,.035),forged);gusset.position.set(side*bore*.22,-.105,0);piston.add(gusset);
+    const gusset=new THREE.Mesh(new RoundedBoxGeometry(.13,.19,.16,4,.035),pistonBossMaterial);gusset.position.set(side*bore*.22,-.105,0);piston.add(gusset);
    }
    const undercrown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.47,bore*.47,.055,48),forged);undercrown.position.y=.065;piston.add(undercrown);
    for(let ribIndex=0;ribIndex<8;ribIndex++){const angle=ribIndex*Math.PI/4;const rib=new THREE.Mesh(new RoundedBoxGeometry(.035,.16,bore*.68,3,.012),bossMaterial);rib.position.set(Math.cos(angle)*bore*.27,-.055,Math.sin(angle)*bore*.27);rib.rotation.y=-angle;piston.add(rib);}
