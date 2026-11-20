@@ -243,7 +243,7 @@ function InlineFourScene(props:Props){
     const gusset=new THREE.Mesh(new RoundedBoxGeometry(.13,.19,.16,4,.035),pistonBossMaterial);gusset.position.set(side*bore*.22,-.105,0);piston.add(gusset);
    }
    const undercrown=new THREE.Mesh(new THREE.CylinderGeometry(bore*.47,bore*.47,.055,48),forged);undercrown.position.y=.065;piston.add(undercrown);
-   for(let ribIndex=0;ribIndex<8;ribIndex++){const angle=ribIndex*Math.PI/4;const rib=new THREE.Mesh(new RoundedBoxGeometry(.035,.16,bore*.68,3,.012),bossMaterial);rib.position.set(Math.cos(angle)*bore*.27,-.055,Math.sin(angle)*bore*.27);rib.rotation.y=-angle;piston.add(rib);}
+   for(let ribIndex=0;ribIndex<8;ribIndex++){const angle=ribIndex*Math.PI/4;const rib=new THREE.Mesh(new RoundedBoxGeometry(.035,.16,bore*.68,3,.012),pistonBossMaterial);rib.position.set(Math.cos(angle)*bore*.27,-.055,Math.sin(angle)*bore*.27);rib.rotation.y=-angle;piston.add(rib);}
    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(bore*.5-.0007*props.geometry.boreM*scale,bore*.5-.0007*props.geometry.boreM*scale,.30,64,1,true),aluminium);skirt.position.y=-.18;piston.add(skirt);
    const skirtLowerRim=new THREE.Mesh(new THREE.TorusGeometry(bore*.49,.018,10,64),steel);skirtLowerRim.rotation.x=Math.PI/2;skirtLowerRim.position.y=-.33;piston.add(skirtLowerRim);
    const innerSkirt=new THREE.Mesh(new THREE.CylinderGeometry(bore*.455,bore*.455,.22,48,1,true),dark);innerSkirt.position.y=-.19;piston.add(innerSkirt);
@@ -266,6 +266,7 @@ function InlineFourScene(props:Props){
     const seat=new THREE.Mesh(new THREE.TorusGeometry(.285,.026,10,48),steel);seat.rotation.x=Math.PI/2;seat.position.set(x,deck+.015,zz);addSceneObject(seat);
     g.position.set(x,deck+.45,zz);addSceneObject(g);return g;
    };
+   activeSection="valvetrain";
    const makeSpring=(x:number,zz:number)=>{const points:THREE.Vector3[]=[];for(let k=0;k<=96;k++){const t=k/96,a=t*Math.PI*2*9;points.push(vec(Math.cos(a)*.095,-.22+t*.44,Math.sin(a)*.095));}const spring=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),220,.016,8,false),steel);spring.position.set(x,deck+.46,zz);spring.castShadow=true;addSceneObject(spring);return spring;};
    for(const zz of [-bore*.12,bore*.12]){const x=-bore*.28;intake.push(makeValve(x,z+zz,0x70cdb6));intakeSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);addSceneObject(bucket);followers.push(bucket);}
    for(const zz of [-bore*.12,bore*.12]){const x=bore*.28;exhaust.push(makeValve(x,z+zz,0xe4a05a));exhaustSprings.push(makeSpring(x,z+zz));const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,.12,24),steel);bucket.position.set(x,deck+.76,z+zz);addSceneObject(bucket);followers.push(bucket);}
