@@ -273,7 +273,7 @@ function InlineFourScene(props:Props){
   const beltCurve=timingBeltPath(pulleyPositions.map(([x,y,r])=>({x,y,r:r+.045})),length/2+.28);
   const belt=new THREE.Mesh(new THREE.TubeGeometry(beltCurve,384,.045,12,true),timingBeltMaterial);belt.castShadow=true;timing.add(belt);
   const beltPoints=beltCurve.getPoints(256),brokenTimingBeltMeshes:THREE.Mesh[]=[];
-  for(const [start,end] of [[0,112],[144,256]]){
+  for(const [start,end] of [[0,112],[144,256]] as const){
    const segmentPoints=beltPoints.slice(start,end+1);
    const segmentCurve=new THREE.CatmullRomCurve3(segmentPoints);
    const segment=new THREE.Mesh(new THREE.TubeGeometry(segmentCurve,Math.max(32,segmentPoints.length*2),.045,12,false),timingBeltMaterial);
