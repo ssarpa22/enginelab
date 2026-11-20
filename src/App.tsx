@@ -195,7 +195,9 @@ function App() {
               crankCycleAngleDeg:nextCrankshaft.cycleAngleDeg,
               crankRpm:nextCrankshaft.rpm,
               dtSeconds:substepSeconds,
-              crankDriveTorqueNm:Math.abs(gasTorque+starterTorque)+(!timingDriveRef.current.beltBroken?TIMING_DRIVE_REFLECTED_LOAD_NM:0)
+              // Only camshaft/valve-train torque is transmitted by the timing belt.
+              // Combustion torque continues through the crankshaft and is not belt tension.
+              timingDriveTorqueNm:timingDriveRef.current.beltBroken?0:TIMING_DRIVE_REFLECTED_LOAD_NM
             });
             if(timingDriveRef.current.beltBroken&&activeEngineMode==="running")activeEngineMode="off";
             // Advance each cylinder on every crank substep. This prevents the
