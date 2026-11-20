@@ -208,3 +208,5 @@
 .scene-section-toolbar button.is-visible{border-color:#638d7f;background:#1b302a;color:#bde8d7}
 .scene-section-toolbar button:hover{border-color:var(--amber);color:#f0c17e}
 @media(max-width:620px){.scene-section-toolbar{gap:4px}.scene-section-toolbar button{font-size:7px;padding:7px 6px}}
+
+.timing-drive-failed{color:#ff7777!important;text-shadow:0 0 10px #a32d2d66}

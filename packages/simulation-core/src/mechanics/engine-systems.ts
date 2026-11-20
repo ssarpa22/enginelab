@@ -18,6 +18,7 @@ export type CylinderMechanicalState = {
   intakeLiftActualMm: number;
   exhaustLiftActualMm: number;
   minimumValveClearanceMm: number;
+  maximumSafeValveLiftMm: number;
   valveCollision: boolean;
   skirtClearanceMm: number;
   rodToBlockClearanceMm: number;
@@ -124,7 +125,7 @@ export function calculateCylinderMechanics(
     pistonSideClearanceM:skirtClearanceMm/1000,
     intakeLiftCommandMm:valve.intakeLiftMm,exhaustLiftCommandMm:valve.exhaustLiftMm,
     intakeLiftActualMm:intakeActual,exhaustLiftActualMm:exhaustActual,
-    minimumValveClearanceMm, valveCollision,skirtClearanceMm,rodToBlockClearanceMm,
+    minimumValveClearanceMm,maximumSafeValveLiftMm:maxSafeLiftMm, valveCollision,skirtClearanceMm,rodToBlockClearanceMm,
     mechanicalWarning:warning,valveFloatSeverity:clamp(valveFloatSeverity,0,1)
   };
 }
