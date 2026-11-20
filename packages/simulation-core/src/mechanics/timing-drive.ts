@@ -64,12 +64,16 @@ export function stepTimingDrive(
   ];
   if (!values.every(Number.isFinite) || input.crankRpm < 0 ||
       input.dtSeconds < 0 || input.dtSeconds > 0.1 ||
-      input.crankDriveTorqueNm < 0) {
+      input.timingDriveTorqueNm < 0) {
     throw new RangeError("Invalid timing-drive input or integration step.");
   }
 
   const pitchRadius = INLINE_FOUR_TIMING_DRIVE.crankPitchRadiusM;
-  const beltTensionN = input.crankDriveTorqueNm / pitchRadius;
+  // Belt tension is pretension plus the differential load needed to transmit
+  // camshaft/valve-train torque. Combustion torque is carried by the crankshaft,
+  // not transmitted through the timing belt.
+  const beltTensionN = INLINE_FOUR_TIMING_DRIVE.beltPretensionN +
+    input.timingDriveTorqueNm / pitchRadius;
   const newlyBroken = !previous.beltBroken &&
     beltTensionN > INLINE_FOUR_TIMING_DRIVE.maximumBeltTensionN;
   const beltBroken = previous.beltBroken || newlyBroken;
