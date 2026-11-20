@@ -456,10 +456,9 @@ function InlineFourScene(props:Props){
    const camExhaustCycle=calculateCamFollowerCycleAngleDeg(props.timingDrive.camshaftAngleDeg,EXHAUST_CAM_CENTER,cylinderOffset);
    const camIntakeLift=calculateValveState(camIntakeCycle).intakeLiftMm;
    const camExhaustLift=calculateValveState(camExhaustCycle).exhaustLiftMm;
-   const intakeEffectiveness=state.intakeLiftCommandMm>.001?clamp(state.intakeLiftActualMm/state.intakeLiftCommandMm,0,1):0;
-   const exhaustEffectiveness=state.exhaustLiftCommandMm>.001?clamp(state.exhaustLiftActualMm/state.exhaustLiftCommandMm,0,1):0;
-   const liftIn=camIntakeLift*intakeEffectiveness/1000*(2.2/props.geometry.strokeM);
-   const liftOut=camExhaustLift*exhaustEffectiveness/1000*(2.2/props.geometry.strokeM);
+   const safeCamLift=Math.max(0,state.maximumSafeValveLiftMm);
+   const liftIn=Math.min(camIntakeLift,safeCamLift)/1000*(2.2/props.geometry.strokeM);
+   const liftOut=Math.min(camExhaustLift,safeCamLift)/1000*(2.2/props.geometry.strokeM);
    p.intake.forEach((v,j)=>{v.position.y=deck+.45-liftIn;p.intakeSprings[j]!.scale.y=Math.max(.35,1-liftIn/.42);p.intakeSprings[j]!.position.y=deck+.46-liftIn/2;});
    p.exhaust.forEach((v,j)=>{v.position.y=deck+.45-liftOut;p.exhaustSprings[j]!.scale.y=Math.max(.35,1-liftOut/.42);p.exhaustSprings[j]!.position.y=deck+.46-liftOut/2;});
    p.followers.forEach((f,j)=>{const lift=j<2?liftIn:liftOut;f.position.y=deck+.76-lift;});
