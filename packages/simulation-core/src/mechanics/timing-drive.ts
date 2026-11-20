@@ -2,7 +2,7 @@ export const INLINE_FOUR_TIMING_DRIVE = {
   crankPulleyTeeth: 24,
   camPulleyTeeth: 48,
   crankPitchRadiusM: 0.038,
-  maximumBeltTensionN: 850,
+  maximumBeltTensionN: 4_800,
   camshaftInertiaKgM2: 0.018,
   camshaftDragTorqueNm: 0.22
 } as const;
