@@ -24,7 +24,7 @@ describe("adaptive render resolution", () => {
     const low = { scale: 0.7, smoothedFrameMs: 10, lastAdjustmentMs: 0 };
     const next = updateAdaptiveResolution(low, 10, 1000, false);
     expect(next.scale).toBeGreaterThan(low.scale);
-    expect(next.scale).toBeLessThanOrEqual(1);
+    expect(next.scale).toBeLessThanOrEqual(0.82);
   });
 
   it("ignores invalid frame measurements", () => {

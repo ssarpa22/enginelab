@@ -1,6 +1,6 @@
-export const MIN_RENDER_SCALE = 0.55;
+export const MIN_RENDER_SCALE = 0.4;
 export const INTERACTION_RENDER_SCALE = 0.78;
-export const MAX_RENDER_SCALE = 1;
+export const MAX_RENDER_SCALE = 0.82;
 const ADJUSTMENT_COOLDOWN_MS = 650;
 
 /**

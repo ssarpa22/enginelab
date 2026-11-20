@@ -60,7 +60,9 @@ function createCamLobeShape(kind:"intake"|"exhaust",centerCycle:number,cylinderO
  shape.closePath();
  return shape;
 }
-const mat=(color:number,roughness=.35,metalness=.72)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
+// Flat diffuse materials avoid expensive metallic/specular highlights and give
+// the cutaway a readable workshop/CAD appearance.
+const mat=(color:number,_roughness=.35,_metalness=.72)=>new THREE.MeshLambertMaterial({color});
 function between(mesh:THREE.Mesh,a:THREE.Vector3,b:THREE.Vector3){const d=new THREE.Vector3().subVectors(b,a);mesh.position.copy(a).add(b).multiplyScalar(.5);mesh.scale.set(1,d.length(),1);mesh.quaternion.setFromUnitVectors(vec(0,1,0),d.normalize());}
 function makeTube(add:(object:THREE.Object3D)=>void,points:THREE.Vector3[],radius:number,material:THREE.Material){const curve=new THREE.CatmullRomCurve3(points);const mesh=new THREE.Mesh(new THREE.TubeGeometry(curve,48,radius,10,false),material);mesh.castShadow=true;add(mesh);return curve;}
 type Part={piston:THREE.Group;rod:THREE.Mesh;rodBigEnd:THREE.Mesh;rodSmallEnd:THREE.Mesh;intake:THREE.Group[];exhaust:THREE.Group[];intakeSprings:THREE.Mesh[];exhaustSprings:THREE.Mesh[];followers:THREE.Mesh[];};
@@ -80,17 +82,18 @@ function InlineFourScene(props:Props){
   const zAt=(i:number)=>(i-1.5)*spacing;
   const camera=new THREE.PerspectiveCamera(38,1,.1,80);camera.position.set(width*2.8,deck*.95,length*.9);
   let renderer:THREE.WebGLRenderer;
-  try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:"high-performance",stencil:false,depth:true,preserveDrawingBuffer:false});}catch{el.textContent="Este navegador no pudo iniciar WebGL.";return;}
-  const basePixelRatio=Math.min(window.devicePixelRatio||1,1.05);renderer.setPixelRatio(basePixelRatio);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;el.appendChild(renderer.domElement);
+  try{renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:"low-power",stencil:false,depth:true,preserveDrawingBuffer:false});}catch{el.textContent="Este navegador no pudo iniciar WebGL.";return;}
+  // Technical/CAD-style rendering: keep the mechanical geometry, remove costly
+  // cinematic effects and render below native display density by default.
+  const basePixelRatio=Math.min(window.devicePixelRatio||1,.78);renderer.setPixelRatio(basePixelRatio);renderer.shadowMap.enabled=false;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;el.appendChild(renderer.domElement);
   const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.dampingFactor=.065;controls.target.set(0,deck*.45,0);controls.minDistance=5;controls.maxDistance=32;controls.maxPolarAngle=Math.PI*.84;
   let resolution=createAdaptiveResolutionState(),interacting=false;
   const applyRenderScale=(scale:number)=>{renderer.setPixelRatio(basePixelRatio*scale);renderer.setSize(Math.max(1,el.clientWidth),Math.max(300,el.clientHeight),false);};
-  const onInteractionStart=()=>{interacting=true;renderer.shadowMap.enabled=false;if(resolution.scale>.58){resolution={...resolution,scale:.58,lastAdjustmentMs:performance.now()};applyRenderScale(resolution.scale);}};
-  const onInteractionEnd=()=>{interacting=false;renderer.shadowMap.enabled=true;};
+  const onInteractionStart=()=>{interacting=true;if(resolution.scale>.58){resolution={...resolution,scale:.58,lastAdjustmentMs:performance.now()};applyRenderScale(resolution.scale);}};
+  const onInteractionEnd=()=>{interacting=false;};
   controls.addEventListener("start",onInteractionStart);controls.addEventListener("end",onInteractionEnd);
-  scene.add(new THREE.HemisphereLight(0xd9e8e6,0x1b2427,2.1));
-  const key=new THREE.DirectionalLight(0xffe4c4,3.2);key.position.set(7,deck+7,length*.6);key.castShadow=true;key.shadow.mapSize.set(1024,1024);key.shadow.camera.near=.5;key.shadow.camera.far=30;key.shadow.bias=-.00025;scene.add(key);
-  const rim=new THREE.DirectionalLight(0x8aaeb0,1.8);rim.position.set(-width*2,deck*.7,-length*.7);scene.add(rim);
+  scene.add(new THREE.HemisphereLight(0xe3e9e8,0x30383a,2.0));
+  const key=new THREE.DirectionalLight(0xffffff,1.35);key.position.set(7,deck+7,length*.6);scene.add(key);
   const steel=mat(0xb6c2c4,.22,.92),forged=mat(0x56656b,.3,.86),aluminium=mat(0x879599,.32,.82),dark=mat(0x273236,.5,.65),bronze=mat(0x987047,.28,.84),black=mat(0x151d20,.55,.48);
   const oilMaterial=new THREE.MeshStandardMaterial({color:0x302512,roughness:.18,metalness:.12,transparent:true,opacity:.88});
   const coolantMaterial=new THREE.MeshStandardMaterial({color:0x247f8b,roughness:.2,metalness:.15,transparent:true,opacity:.24});
