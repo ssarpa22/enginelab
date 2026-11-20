@@ -186,15 +186,19 @@ function EngineAudio({ rpm, running, load = .45, cycleAngle, engineMode }: Props
 
     // cycleAngle is the complete 720-degree four-stroke crank cycle. Detect each
     // 180-degree firing crossing from actual shaft travel, including UI frame gaps.
-    const advanceDeg = Math.max(0, cycleAngle - previous);
+    // The simulation angle wraps at 720 degrees; unwrap one UI interval before
+    // counting boundaries so a firing event at the cycle seam is never lost.
+    const advanceDeg = cycleAngle >= previous
+      ? cycleAngle - previous
+      : 720 - previous + cycleAngle;
     const elapsed = Math.max(0, (nowMs - previousTime) / 1000);
-    const crossings = Math.floor(cycleAngle / 180) - Math.floor(previous / 180);
+    const crossings = Math.floor((previous + advanceDeg) / 180) - Math.floor(previous / 180);
     if (crossings <= 0 || advanceDeg <= 0 || elapsed <= 0) return;
 
     const { context, pulseBuffer, pulseFilters } = active;
     const profile = engineAudioProfile(rpm, load);
     const intervalSeconds = 30 / Math.max(1, rpm);
-    const firstCrossingDeg = (Math.floor(previous / 180) + 1) * 180 - previous;
+    const firstCrossingDeg = 180 - (previous % 180);
     const firstDelay = Math.max(0, firstCrossingDeg / advanceDeg * elapsed);
     for (let i = 0; i < Math.min(crossings, 12); i++) {
       const source = context.createBufferSource();
