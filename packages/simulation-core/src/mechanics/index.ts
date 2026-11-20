@@ -27,5 +27,5 @@ export { calculateStarterTorque, starterCanDisengage, STARTER_CUTOUT_RPM, STARTE
 export { createIncrementalCylinderState, advanceIncrementalCylinderState } from "./incremental-cylinder";
 export type { IncrementalCylinderState } from "./incremental-cylinder";
 
-export { INITIAL_TIMING_DRIVE_STATE, INLINE_FOUR_TIMING_DRIVE, TIMING_DRIVE_RATIO, stepTimingDrive } from "./timing-drive";
+export { INITIAL_TIMING_DRIVE_STATE, INLINE_FOUR_TIMING_DRIVE, TIMING_DRIVE_RATIO, TIMING_DRIVE_REFLECTED_LOAD_NM, stepTimingDrive } from "./timing-drive";
 export type { TimingDriveState, TimingDriveStepInput } from "./timing-drive";
