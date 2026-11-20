@@ -78,7 +78,7 @@ export function calculateCoupledCylinderState(
   if (!Number.isFinite(cycleAngleDeg) || !Number.isFinite(rpm) || rpm < 0) {
     throw new RangeError("Cycle angle must be finite and RPM must be finite and non-negative.");
   }
-  validateConfig(config);
+  validateCoupledCylinderConfig(config);
   const angle = ((cycleAngleDeg % 720) + 720) % 720;
   const ivc = 180 + DEFAULT_VALVE_TIMING.intakeClosesAbdc;
   const target = angle < ivc ? angle + 720 : angle;
@@ -212,17 +212,27 @@ function compressibleOrificeFlow(
   return { kgPerS: config.dischargeCoefficient * area * massFlux, direction };
 }
 
-function validateConfig(config: CoupledCylinderConfig): void {
+export function validateCoupledCylinderConfig(config: CoupledCylinderConfig): void {
   for (const [key, value] of Object.entries(config)) {
     if (!Number.isFinite(value)) throw new RangeError(`${key} must be finite.`);
   }
   if (config.intakePressurePa <= 0 || config.intakeTemperatureK <= 0 ||
-      config.exhaustPressurePa <= 0 || config.wallTemperatureK <= 0 ||
+      config.exhaustPressurePa <= 0 || config.exhaustTemperatureK <= 0 || config.wallTemperatureK <= 0 ||
       config.gasConstantJPerKgK <= 0 || config.cvJPerKgK <= 0 ||
       config.gamma <= 1 || config.dischargeCoefficient <= 0 || config.dischargeCoefficient > 1 ||
-      config.heatReleasePerCycleJ < 0 || config.combustionDurationDeg <= 0 ||
+      config.heatReleasePerCycleJ < 0 || config.combustionStartBtdc < 0 || config.combustionStartBtdc > 90 ||
+      config.combustionDurationDeg <= 0 || config.combustionDurationDeg > 180 ||
       config.wiebeA <= 0 || config.wiebeM <= 0 || config.wallHeatTransferWPerM2K < 0 ||
-      config.intakeValveDiameterRatio <= 0 || config.exhaustValveDiameterRatio <= 0) {
+      config.intakeValveDiameterRatio <= 0 || config.intakeValveDiameterRatio > 1 ||
+      config.exhaustValveDiameterRatio <= 0 || config.exhaustValveDiameterRatio > 1) {
     throw new RangeError("Thermodynamic configuration contains an out-of-range physical parameter.");
+  }
+
+  // For a constant-property ideal gas: cp = gamma * cv and R = cp - cv.
+  // Therefore gamma must be consistent with 1 + R/cv.
+  const expectedGamma = 1 + config.gasConstantJPerKgK / config.cvJPerKgK;
+  const relativeGammaError = Math.abs(config.gamma - expectedGamma) / expectedGamma;
+  if (relativeGammaError > 0.01) {
+    throw new RangeError("gamma must match 1 + R/cv within 1% for the constant-property ideal-gas model.");
   }
 }

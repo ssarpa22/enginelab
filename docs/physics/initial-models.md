@@ -168,11 +168,16 @@ hold so it remains visible at normal display frame rates.
 
 ## Coupled 0-D cylinder model (educational reference)
 
-The current simulator advances a single-zone open-system cylinder balance in
-one-degree crank-angle increments over a 720-degree four-stroke cycle. The
-state includes cylinder mass, internal energy, pressure, temperature, valve
-mass flow, heat-release rate, burned fraction and instantaneous indicated
-work/torque.
+The retained cycle-replay reference solver advances a single-zone
+open-system cylinder balance in one-degree crank-angle increments over a
+720-degree four-stroke cycle. The live application uses the persistent
+incremental solver: it retains mass, temperature, pressure and burn fraction
+between physics steps, and uses an RPM-dependent maximum angular substep of
+0.5–1.5 crank degrees. Fractional crank angles are preserved.
+
+The state includes cylinder mass, internal energy, pressure, temperature,
+valve mass flow, heat-release rate, burned fraction and instantaneous
+indicated work/torque.
 
 Mass flow through each valve uses a compressible isentropic nozzle relation
 with a choked-flow branch. The effective flow area is approximated by the
@@ -191,8 +196,10 @@ The internal-energy balance includes:
 
 The heat input per cycle, wall coefficient, manifold boundary conditions,
 specific heats, discharge coefficient and valve dimensions are reference
-assumptions. They are exposed in the model configuration so future work can
-replace them with engine-specific data. The current indicated torque is an
+assumptions. For the constant-property ideal gas, \(c_p=\gamma c_v\) and
+\(R=c_p-c_v\); configuration validation therefore enforces
+\(\gamma=1+R/c_v\) within 1%. The parameters are exposed in the model
+configuration so future work can replace them with engine-specific data. The current indicated torque is an
 instantaneous pressure-force/slider-crank estimate, not a cycle-averaged
 dynamometer result; indicated power is the instantaneous torque multiplied
 by crankshaft angular speed.
