@@ -174,19 +174,50 @@ function InlineFourScene(props:Props){
    cam.position.set(x,deck+.955,0);addSceneObject(cam);cams.push(cam);
   }
   activeSection="bottomEnd";
-  // Crankshaft with five main journals, four throws, counterweights and crankpins.
-  const crank=new THREE.Group(),main=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,length*.98,28),steel);main.rotation.x=Math.PI/2;crank.add(main);
-  for(let i=0;i<5;i++){const z=-length*.43+i*length*.215,bearing=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,.26,24),forged);bearing.rotation.x=Math.PI/2;bearing.position.z=z;crank.add(bearing);}
-  const throws:THREE.Group[]=[];
+  // Forged inline-four crankshaft: five main-journal spans, four offset crankpins,
+  // paired crank webs and integral counterweight lobes. All throws share the
+  // real 1/4 and 2/3 phasing defined by INLINE_FOUR_CRANK_PHASES_DEG.
+  const crank=new THREE.Group();
+  const crankWebThickness=.12,crankWebOffset=.29,crankWebInnerFace=crankWebOffset-crankWebThickness/2;
+  const crankpinRadius=.16,crankpinLength=crankWebInnerFace*2;
+  const mainJournalCenters:number[]=[];
+  for(let mainIndex=0;mainIndex<5;mainIndex++){
+   const start=mainIndex===0?-length/2:zAt(mainIndex-1)+crankWebInnerFace;
+   const end=mainIndex===4?length/2:zAt(mainIndex)-crankWebInnerFace;
+   const journalLength=Math.max(.12,end-start),journalCenter=(start+end)/2;
+   mainJournalCenters.push(journalCenter);
+   const journal=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,journalLength,36),steel);
+   journal.rotation.x=Math.PI/2;journal.position.z=journalCenter;journal.castShadow=true;crank.add(journal);
+   const bearing=new THREE.Mesh(new THREE.CylinderGeometry(.24,.24,.26,32),forged);
+   bearing.rotation.x=Math.PI/2;bearing.position.z=journalCenter;bearing.castShadow=true;crank.add(bearing);
+  }
+  const webShape=new THREE.Shape();
+  webShape.moveTo(-.18,.04);
+  webShape.quadraticCurveTo(-.30,.30,-.29,.56*r);
+  webShape.quadraticCurveTo(-.28,.82*r,-.16,.94*r);
+  webShape.quadraticCurveTo(0,1.10*r,.16,.94*r);
+  webShape.quadraticCurveTo(.28,.82*r,.29,.56*r);
+  webShape.quadraticCurveTo(.30,.30,.18,.04);
+  webShape.quadraticCurveTo(.29,-.22*r,.34,-.58*r);
+  webShape.quadraticCurveTo(.38,-.93*r,.18,-1.02*r);
+  webShape.quadraticCurveTo(0,-1.08*r,-.18,-1.02*r);
+  webShape.quadraticCurveTo(-.38,-.93*r,-.34,-.58*r);
+  webShape.quadraticCurveTo(-.29,-.22*r,-.18,.04);
+  webShape.closePath();
+  const webGeometry=new THREE.ExtrudeGeometry(webShape,{depth:crankWebThickness,steps:1,bevelEnabled:true,bevelSegments:3,bevelThickness:.012,bevelSize:.012});
+  webGeometry.translate(0,0,-crankWebThickness/2);
   for(let i=0;i<4;i++){
-   const t=new THREE.Group();t.position.z=zAt(i);t.rotation.z=-(INLINE_FOUR_CRANK_PHASES_DEG[i]??0)*Math.PI/180;
+   const throwGroup=new THREE.Group();
+   throwGroup.position.z=zAt(i);
+   throwGroup.rotation.z=-(INLINE_FOUR_CRANK_PHASES_DEG[i]??0)*Math.PI/180;
    for(const side of [-1,1]){
-     const web=new THREE.Mesh(new THREE.LatheGeometry([new THREE.Vector2(0,-r*.78),new THREE.Vector2(.16,-r*.78),new THREE.Vector2(.24,-r*.55),new THREE.Vector2(.22,-r*.12),new THREE.Vector2(.16,r*.42),new THREE.Vector2(.11,r*.68),new THREE.Vector2(0,r*.68)],32),forged);
-     web.rotation.x=Math.PI/2;web.scale.set(.78,1,.42);web.position.set(0,r*.48,side*.23);t.add(web);
-    }
-   const pin=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.52,24),bronze);pin.rotation.x=Math.PI/2;pin.position.y=r;t.add(pin);
-   const counter=new THREE.Mesh(new RoundedBoxGeometry(.48,.56,.42,4,.12),dark);counter.position.set(0,-r*.7,0);t.add(counter);
-   crank.add(t);throws.push(t);
+    const web=new THREE.Mesh(webGeometry,forged);
+    web.position.z=side*crankWebOffset;
+    web.castShadow=true;web.receiveShadow=true;throwGroup.add(web);
+   }
+   const crankpin=new THREE.Mesh(new THREE.CylinderGeometry(crankpinRadius,crankpinRadius,crankpinLength,36),bronze);
+   crankpin.rotation.x=Math.PI/2;crankpin.position.y=r;crankpin.castShadow=true;throwGroup.add(crankpin);
+   crank.add(throwGroup);
   }
   // Exposed crankshaft nose physically bridges the main shaft to the lower timing pulley.
   const crankNose=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,.48,40),steel);crankNose.rotation.x=Math.PI/2;crankNose.position.z=length/2+.015;crank.add(crankNose);
@@ -250,10 +281,23 @@ function InlineFourScene(props:Props){
    addSceneObject(piston);
    const rodProfile=new THREE.Shape();
    rodProfile.moveTo(-.075,-.5);rodProfile.lineTo(.075,-.5);rodProfile.lineTo(.075,-.34);rodProfile.lineTo(.034,-.25);rodProfile.lineTo(.034,.25);rodProfile.lineTo(.075,.34);rodProfile.lineTo(.075,.5);rodProfile.lineTo(-.075,.5);rodProfile.lineTo(-.075,.34);rodProfile.lineTo(-.034,.25);rodProfile.lineTo(-.034,-.25);rodProfile.lineTo(-.075,-.34);rodProfile.closePath();
-   const rodGeometry=new THREE.ExtrudeGeometry(rodProfile,{depth:.055,steps:1,bevelEnabled:true,bevelSegments:3,bevelThickness:.008,bevelSize:.008});rodGeometry.translate(0,0,-.0275);
+   const rodGeometry=new THREE.ExtrudeGeometry(rodProfile,{depth:.11,steps:1,bevelEnabled:true,bevelSegments:3,bevelThickness:.012,bevelSize:.01});rodGeometry.translate(0,0,-.055);
    const rod=new THREE.Mesh(rodGeometry,forged);rod.castShadow=true;addSceneObject(rod);
-   const rodBigEnd=new THREE.Mesh(new THREE.TorusGeometry(.17,.042,14,40),bronze);rodBigEnd.castShadow=true;addSceneObject(rodBigEnd);
-   const rodSmallEnd=new THREE.Mesh(new THREE.TorusGeometry(.105,.032,14,36),bronze);rodSmallEnd.castShadow=true;addSceneObject(rodSmallEnd);
+   // Big-end housing follows the crankpin; its split cap and paired fasteners
+   // make the bearing connection legible instead of a loose decorative ring.
+   const rodBigEnd=new THREE.Mesh(new THREE.TorusGeometry(.17,.045,16,48),bronze);
+   rodBigEnd.castShadow=true;
+   const bigEndCap=new THREE.Mesh(new THREE.TorusGeometry(.17,.048,12,28,Math.PI),forged);
+   bigEndCap.rotation.z=Math.PI;rodBigEnd.add(bigEndCap);
+   for(const boltSide of [-1,1]){
+    const capBolt=new THREE.Mesh(new THREE.CylinderGeometry(.024,.024,.075,12),steel);
+    capBolt.rotation.x=Math.PI/2;capBolt.position.set(boltSide*.145,-.105,0);capBolt.castShadow=true;rodBigEnd.add(capBolt);
+   }
+   addSceneObject(rodBigEnd);
+   // The small-end bush is perpendicular to the wrist-pin axis (X), unlike
+   // the big-end bearing which surrounds the crankpin axis (Z).
+   const rodSmallEnd=new THREE.Mesh(new THREE.TorusGeometry(.105,.032,14,40),bronze);
+   rodSmallEnd.rotation.y=Math.PI/2;rodSmallEnd.castShadow=true;addSceneObject(rodSmallEnd);
    activeSection="valvetrain";
    const intake:THREE.Group[]=[],exhaust:THREE.Group[]=[],intakeSprings:THREE.Mesh[]=[],exhaustSprings:THREE.Mesh[]=[],followers:THREE.Mesh[]=[];
    const makeValve=(x:number,zz:number,color:number)=>{
