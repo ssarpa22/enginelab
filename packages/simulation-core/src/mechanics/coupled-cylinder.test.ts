@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
-import { calculateCoupledCylinderState } from "./coupled-cylinder";
+import { calculateCoupledCylinderState, DEFAULT_COUPLED_CYLINDER } from "./coupled-cylinder";
 
 const geometry = createEngineGeometry({
   cylinderCount: 1,
@@ -46,6 +46,20 @@ describe("coupled open-system cylinder model", () => {
       expect(Number.isFinite(state.indicatedTorqueNm)).toBe(true);
       expect(Number.isFinite(state.indicatedPowerW)).toBe(true);
     }
+  });
+
+  it("rejects gas properties that violate the constant-property ideal-gas relation", () => {
+    expect(() => calculateCoupledCylinderState(geometry, 300, 1800, {
+      ...DEFAULT_COUPLED_CYLINDER,
+      gamma: 1.3
+    })).toThrow(RangeError);
+  });
+
+  it("rejects valve curtain diameter ratios greater than the cylinder bore", () => {
+    expect(() => calculateCoupledCylinderState(geometry, 300, 1800, {
+      ...DEFAULT_COUPLED_CYLINDER,
+      intakeValveDiameterRatio: 1.1
+    })).toThrow(RangeError);
   });
 
   it("rejects invalid RPM", () => {

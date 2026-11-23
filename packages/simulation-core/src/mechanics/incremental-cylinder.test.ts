@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createEngineGeometry } from "../geometry/engine-geometry";
+import { DEFAULT_COUPLED_CYLINDER } from "./coupled-cylinder";
 import { advanceIncrementalCylinderState, calculateCylinderIntegrationAngleStepDeg, createIncrementalCylinderState } from "./incremental-cylinder";
 
 const geometry = createEngineGeometry({
@@ -59,6 +60,36 @@ describe("incremental cylinder thermodynamics", () => {
     expect(state.integratedAngleDeg).toBeCloseTo(start + 1_440, 7);
     expect(state.cycleAngleDeg).toBeCloseTo(start % 720, 7);
     expect(Number.isFinite(state.pressurePa)).toBe(true);
+  });
+
+  it("maintains ideal-gas pressure, mass, temperature and volume closure through the cycle", () => {
+    let state = createIncrementalCylinderState(geometry);
+    for (let angle = 225; angle <= 1440; angle += 5) {
+      state = advanceIncrementalCylinderState(state, geometry, angle % 720, 2400);
+      const idealGasPressure = state.massKg * DEFAULT_COUPLED_CYLINDER.gasConstantJPerKgK *
+        state.temperatureK / state.volumeM3;
+      expect(state.pressurePa).toBeCloseTo(idealGasPressure, 8);
+    }
+  });
+
+  it("raises compression pressure and temperature, then releases heat after the spark advance", () => {
+    let state = createIncrementalCylinderState(geometry);
+    state = advanceIncrementalCylinderState(state, geometry, 330, 1800);
+    expect(state.pressurePa).toBeGreaterThan(DEFAULT_COUPLED_CYLINDER.intakePressurePa);
+    expect(state.temperatureK).toBeGreaterThan(DEFAULT_COUPLED_CYLINDER.intakeTemperatureK);
+
+    state = advanceIncrementalCylinderState(state, geometry, 344, 1800);
+    expect(state.burnedFraction).toBe(0);
+    state = advanceIncrementalCylinderState(state, geometry, 365, 1800);
+    expect(state.burnedFraction).toBeGreaterThan(0);
+    expect(state.heatReleaseRateW).toBeGreaterThan(0);
+  });
+
+  it("rejects thermodynamic constants that are inconsistent with a fixed-property ideal gas", () => {
+    expect(() => createIncrementalCylinderState(geometry, {
+      ...DEFAULT_COUPLED_CYLINDER,
+      gamma: 1.3
+    })).toThrow(RangeError);
   });
 
   it("does not advance when the requested angle is unchanged", () => {

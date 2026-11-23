@@ -2,7 +2,7 @@ import type { EngineGeometry } from "../geometry/engine-geometry";
 import { calculateSliderCrankState } from "./slider-crank";
 import { calculateValveState, DEFAULT_VALVE_TIMING } from "./valve-timing";
 import type { CoupledCylinderConfig, CoupledCylinderState } from "./coupled-cylinder";
-import { DEFAULT_COUPLED_CYLINDER } from "./coupled-cylinder";
+import { DEFAULT_COUPLED_CYLINDER, validateCoupledCylinderConfig } from "./coupled-cylinder";
 
 export type IncrementalCylinderState = CoupledCylinderState & {
   /** Unwrapped crank-cycle angle; unlike cycleAngleDeg this never wraps. */
@@ -31,7 +31,7 @@ export function createIncrementalCylinderState(
   geometry: CylinderGeometry,
   config: CoupledCylinderConfig = DEFAULT_COUPLED_CYLINDER
 ): IncrementalCylinderState {
-  validateConfig(config);
+  validateCoupledCylinderConfig(config);
   const angle = 180 + DEFAULT_VALVE_TIMING.intakeClosesAbdc;
   const volume = volumeAt(geometry, angle);
   const mass = config.intakePressurePa * volume / (config.gasConstantJPerKgK * config.intakeTemperatureK);
@@ -57,9 +57,8 @@ export function createIncrementalCylinderState(
 
 /**
  * Advances the open-system first-law balance from the previous state to a
- * new crank angle. The integration is sub-stepped to at most 0.5 crank degree,
- * including fractional degrees, so the 240 Hz physics clock is not quantized
- * to whole-degree updates.
+ * new crank angle. The RPM-dependent maximum substep ranges from 0.5 to 1.5
+ * crank degrees; fractional angles are preserved by the 240 Hz physics clock.
  */
 export function advanceIncrementalCylinderState(
   previous: IncrementalCylinderState,
@@ -71,7 +70,7 @@ export function advanceIncrementalCylinderState(
   if (!Number.isFinite(targetCycleAngleDeg) || !Number.isFinite(rpm) || rpm < 0) {
     throw new RangeError("Cycle angle must be finite and RPM must be finite and non-negative.");
   }
-  validateConfig(config);
+  validateCoupledCylinderConfig(config);
   const targetWrapped = wrap(targetCycleAngleDeg, 720);
   const previousWrapped = wrap(previous.integratedAngleDeg, 720);
   const delta = wrap(targetWrapped - previousWrapped, 720);
@@ -209,19 +208,4 @@ function compressibleFlow(
   return { massFlow: config.dischargeCoefficient * area * flux, direction };
 }
 
-function validateConfig(config: CoupledCylinderConfig): void {
-  for (const [name, value] of Object.entries(config)) {
-    if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite.`);
-  }
-  if (config.intakePressurePa <= 0 || config.intakeTemperatureK <= 0 ||
-      config.exhaustPressurePa <= 0 || config.exhaustTemperatureK <= 0 ||
-      config.wallTemperatureK <= 0 || config.gasConstantJPerKgK <= 0 ||
-      config.cvJPerKgK <= 0 || config.gamma <= 1 ||
-      config.dischargeCoefficient <= 0 || config.dischargeCoefficient > 1 ||
-      config.heatReleasePerCycleJ < 0 || config.combustionDurationDeg <= 0 ||
-      config.wiebeA <= 0 || config.wiebeM <= 0 ||
-      config.wallHeatTransferWPerM2K < 0 ||
-      config.intakeValveDiameterRatio <= 0 || config.exhaustValveDiameterRatio <= 0) {
-    throw new RangeError("Thermodynamic configuration contains an out-of-range physical parameter.");
-  }
-}
+
